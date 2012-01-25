@@ -53,7 +53,8 @@ Executable activehs
     Special
 
   Build-Depends:
---    Agda >= 2.2 && < 2.3,
+    Agda,
+    highlighting-kate,
     hoogle >= 4.2 && < 4.3,
     dia-base >= 0.1 && < 0.2,
     dia-functions >= 0.2.1.1 && < 0.3,
