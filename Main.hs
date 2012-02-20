@@ -12,7 +12,7 @@ import Lang
 import Result
 import Html
 
-import Snap.Types
+import Snap.Core
 import Snap.Http.Server (httpServe)
 import Snap.Http.Server.Config
 import Snap.Util.FileServe (getSafePath, serveDirectoryWith, simpleDirectoryConfig)
@@ -52,8 +52,8 @@ mainWithArgs args@(Args {port, static, logdir, hoogledb, fileservedir, gendir, m
     httpServe
 
         ( setPort port
-        . setAccessLog (if null logdir then Nothing else Just (logdir </> "access.log"))
-        . setErrorLog  (if null logdir then Nothing else Just (logdir </> "error.log"))
+        . setAccessLog (if null logdir then ConfigNoLog else ConfigFileLog (logdir </> "access.log"))
+        . setErrorLog  (if null logdir then ConfigNoLog else ConfigFileLog (logdir </> "error.log"))
         $ emptyConfig
         )
 
