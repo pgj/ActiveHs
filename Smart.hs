@@ -49,7 +49,9 @@ data TaskChan
 startGHCiServer :: [FilePath] -> FilePath -> FilePath -> IO TaskChan
 startGHCiServer searchpaths logfilebase dbname = do
     ti <- getCurrentTime
-    log <- newLogger $ logfilebase ++ "_" ++ formatTime defaultTimeLocale "%Y-%m-%d-%H:%M:%S" ti ++ ".log"
+ -- log <- newLogger $ logfilebase ++ "_" ++ formatTime defaultTimeLocale "%Y-%m-%d-%H:%M:%S" ti ++ ".log"
+ -- colons are not supported in filenames under windows
+    log <- newLogger $ logfilebase ++ "_" ++ formatTime defaultTimeLocale "%Y-%m-%d-%H-%M-%S" ti ++ ".log"
     db <- if (dbname == "") then return Nothing else fmap Just $ loadDatabase dbname
     ch <- Simple.startGHCiServer
             searchpaths

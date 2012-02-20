@@ -12,8 +12,13 @@ import Html
 import Lang
 import Args
 
-import Language.Haskell.Exts.Pretty
-import Language.Haskell.Exts.Syntax
+import qualified Language.Haskell.Exts.Pretty as HPty
+import qualified Language.Haskell.Exts.Syntax as HSyn
+
+{- Agda support (unfinished) 
+import qualified Agda.Syntax.Concrete as ASyn
+import qualified Agda.Utils.Pretty as AUtil
+-}
 
 import Text.XHtml.Strict hiding (lang)
 import Text.Pandoc
@@ -44,10 +49,11 @@ convert ghci args@(Args {magicname, sourcedir, gendir, recompilecmd, verbose}) w
                     return ()
                 else fail $ unlines [unwords [recompilecmd, input], show x, out, err]
         when verbose $ putStrLn $ output ++ " is out of date, regenerating"
-        mainParse False input  >>= extract verbose ghci args what
+        mainParse HaskellMode input  >>= extract HaskellMode verbose ghci args what
     whenOutOfDate () output input2 $ do
+    -- watch object code (*.lagdai?) like in haskell mode?
         when verbose $ putStrLn $ output ++ " is out of date, regenerating"
-        mainParse True input2 >>= extract verbose ghci args what
+        mainParse AgdaMode input2 >>= extract AgdaMode verbose ghci args what
 --        return True
  where
     input  = sourcedir  </> what <.> "lhs"
@@ -56,10 +62,10 @@ convert ghci args@(Args {magicname, sourcedir, gendir, recompilecmd, verbose}) w
     object = sourcedir  </> what <.> "o"
 
 
-extract :: Bool -> TaskChan -> Args -> Language -> Doc -> IO ()
-extract verbose ghci (Args {lang, templatedir, sourcedir, exercisedir, gendir, magicname}) what (Doc meta modu ss) = do
+extract :: ParseMode -> Bool -> TaskChan -> Args -> Language -> Doc -> IO ()
+extract mode verbose ghci (Args {lang, templatedir, sourcedir, exercisedir, gendir, magicname}) what (Doc meta modu ss) = do
 
-    writeEx (what <.> "hs") [showEnv $ importsHiding []]
+    writeEx (what <.> ext) [showEnv $ importsHiding []]
     ss' <- zipWithM processBlock [1..] $ preprocessForSlides ss
     ht <- readFile' $ templatedir </> lang' ++ ".template"
 
@@ -72,6 +78,10 @@ extract verbose ghci (Args {lang, templatedir, sourcedir, exercisedir, gendir, m
         }
 
  where
+    ext = case mode of
+        HaskellMode -> "hs"
+        AgdaMode    -> "agda"
+    
     lang' = case span (/= '_') . reverse $ what of
         (l, "")                -> lang
         (l, _) | length l > 2  -> lang
@@ -93,12 +103,13 @@ extract verbose ghci (Args {lang, templatedir, sourcedir, exercisedir, gendir, m
         when verbose $ putStrLn $ "executing " ++ s
         system s
 
-    importsHiding funnames
-        = prettyPrint $ 
-            Module loc (ModuleName "Main") directives Nothing Nothing
+    importsHiding funnames = case mode of
+        HaskellMode -> HPty.prettyPrint $ 
+            HSyn.Module loc (HSyn.ModuleName "Main") directives Nothing Nothing
               ([mkImport modname funnames, mkImport_ ('X':magicname) modname] ++ imps) []
-     where
-        (Module loc (ModuleName modname) directives _ _ imps _) = modu
+        AgdaMode    -> ""
+        where
+            HaskellModule (HSyn.Module loc (HSyn.ModuleName modname) directives _ _ imps _) = modu
 
     mkCodeBlock l =
         [ CodeBlock ("", ["haskell"], []) $ intercalate "\n" l | not $ null l ]
@@ -112,7 +123,7 @@ extract verbose ghci (Args {lang, templatedir, sourcedir, exercisedir, gendir, m
         = return $ mkCodeBlock $ visihidden
 
     processBlock _ (Exercise _ visi hidden funnames is) = do
-        let i = show $ mkId $ unlines $ map printName funnames
+        let i = show $ mkId $ unlines funnames
             j = "_j" ++ i
             fn = what ++ "_" ++ i <.> "hs"
             (static_, inForm, rows) = if null hidden
@@ -121,7 +132,7 @@ extract verbose ghci (Args {lang, templatedir, sourcedir, exercisedir, gendir, m
 
         writeEx fn  [ showEnv $ importsHiding funnames ++ "\n" ++ unlines static_
                     , unlines $ hidden, show $ map parseQuickCheck is, j, i
-                    , show $ map printName funnames ]
+                    , show funnames ]
         return
             $  mkCodeBlock static_
             ++ showBlockSimple lang' fn i rows (intercalate "\n" inForm)
@@ -235,21 +246,21 @@ showEnv prelude
     ++ prelude
     ++ "\n{-# LINE 1 \"input\" #-}\n"
 
-mkImport :: String -> [Name] -> ImportDecl
+mkImport :: String -> [Name] -> HSyn.ImportDecl
 mkImport m d 
-    = ImportDecl
-        { importLoc = undefined
-        , importModule = ModuleName m
-        , importQualified = False
-        , importSrc = False
-        , importPkg = Nothing
-        , importAs = Nothing
-        , importSpecs = Just (True, map IVar d)
+    = HSyn.ImportDecl
+        { HSyn.importLoc = undefined
+        , HSyn.importModule = HSyn.ModuleName m
+        , HSyn.importQualified = False
+        , HSyn.importSrc = False
+        , HSyn.importPkg = Nothing
+        , HSyn.importAs = Nothing
+        , HSyn.importSpecs = Just (True, map (HSyn.IVar . HSyn.Ident) d)
         }
 
-mkImport_ :: String -> String -> ImportDecl
+mkImport_ :: String -> String -> HSyn.ImportDecl
 mkImport_ magic m 
-    = (mkImport m []) { importQualified = True, importAs = Just $ ModuleName magic }
+    = (mkImport m []) { HSyn.importQualified = True, HSyn.importAs = Just $ HSyn.ModuleName magic }
 
 ------------------
 
