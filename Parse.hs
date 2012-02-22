@@ -95,7 +95,7 @@ mainParse mode s = do
         preprocess ('|':l) 
             = []
         -- drop lines ending with "--"
-        preprocess l | drop ((length l) - 2) l == "--" = []
+        preprocess l | take 3 (dropWhile (==' ') $ reverse l) == "-- " = []
                      | otherwise = [l]
         
         pState = defaultParserState 
