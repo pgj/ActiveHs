@@ -50,6 +50,7 @@ Executable activehs
     HoogleCustom,
     Html,
     QuickCheck,
+    CheckAgdaCode,
     Special
 
   Build-Depends:
