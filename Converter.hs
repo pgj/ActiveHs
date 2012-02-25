@@ -41,7 +41,7 @@ convert ghci args@(Args {magicname, sourcedir, gendir, recompilecmd, verbose}) w
 --            x <- system $ recompilecmd ++ " " ++ input
             let (ghc:args) = words recompilecmd -- !!!
             (x, out, err) <- readProcessWithExitCode ghc (args ++ [input]) ""
-            if x == ExitSuccess 
+            if x == ExitSuccess
                 then do
                     restart ghci
                     return ()

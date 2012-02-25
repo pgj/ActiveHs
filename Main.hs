@@ -44,7 +44,7 @@ main :: IO ()
 main = getArgs >>= mainWithArgs
 
 mainWithArgs :: Args -> IO ()
-mainWithArgs args@(Args {port, static, logdir, hoogledb, fileservedir, gendir, mainpage, restartpath, sourcedir}) = do 
+mainWithArgs args@(Args {port, static, logdir, hoogledb, fileservedir, gendir, mainpage, restartpath, sourcedir, includedir}) = do 
 
     ch <- startGHCiServer [sourcedir] (logdir </> "interpreter") hoogledb
     cache <- newCache 10
@@ -63,7 +63,7 @@ mainWithArgs args@(Args {port, static, logdir, hoogledb, fileservedir, gendir, m
                 <|> ifTop (redirect $ fromString mainpage)
                 <|> path (fromString restartpath) (liftIO $ restart ch >> clearCache cache)
                 )
-        <|> method POST (exerciseServer [sourcedir] (cache, ch) args)
+        <|> method POST (exerciseServer (sourcedir:includedir) (cache, ch) args)
         <|> notFound
         )
   where
