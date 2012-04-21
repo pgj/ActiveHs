@@ -130,10 +130,7 @@ ioTCM' current highlighting cmd = infoOnException $ do
   -- Run the computation.
   r <- runTCM $ catchError (do
            put st
-           x  <- withEnv (initEnv
-                            { envEmacs                   = True
-                            , envInteractiveHighlighting = highlighting
-                            }) $ do
+           x  <- withEnv initEnv $ do
                    case independence cmd of
                      Dependent             -> ensureFileLoaded current
                      Independent Nothing   ->
