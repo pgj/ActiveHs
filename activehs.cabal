@@ -54,8 +54,8 @@ Executable activehs
     Special
 
   Build-Depends:
-    Agda,
-    highlighting-kate,
+    Agda == 2.3.0.1,
+    highlighting-kate >= 0.5 && < 0.6,
     hoogle >= 4.2 && < 4.3,
     dia-base >= 0.1 && < 0.2,
     dia-functions >= 0.2.1.1 && < 0.3,
@@ -68,8 +68,8 @@ Executable activehs
     containers >= 0.4 && < 0.5,
     filepath >= 1.2 && < 1.4,
     text >= 0.11 && < 0.12,
-    snap-core >= 0.6 && < 0.8,
-    snap-server >= 0.6 && < 0.8,
+    snap-core >= 0.6 && < 0.9,
+    snap-server >= 0.6 && < 0.9,
     syb >= 0.2 && < 0.4,
     haskell-src-exts >= 1.9 && < 1.12,
     bytestring >= 0.9 && < 0.10,
