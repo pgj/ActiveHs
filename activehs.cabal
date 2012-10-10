@@ -51,10 +51,11 @@ Executable activehs
     Html,
     QuickCheck,
     CheckAgdaCode,
+    AgdaHighlight,
     Special
 
   Build-Depends:
-    Agda == 2.3.0.1,
+    Agda >= 2.3.0.1 && < 2.4,
     highlighting-kate >= 0.5 && < 0.6,
     hoogle >= 4.2.11 && < 4.3,
     dia-base >= 0.1 && < 0.2,
