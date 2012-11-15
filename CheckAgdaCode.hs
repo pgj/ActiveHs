@@ -120,28 +120,33 @@ ioTCM' :: FilePath
          -- which interprets this information.
       -> Interaction
       -> IO (Maybe String)
-ioTCM' current highlighting cmd = infoOnException $ do
+ioTCM' current highlighting cmd = undefined 
+{-
+ infoOnException $ do
 
-  current <- absolute current
+--  current <- absolute current
 
   -- Read the state.
-  let (State { theTCState = st }) = initState
+  let (InteractionState { theTCState = st }) = initState
 
   -- Run the computation.
   r <- runTCM $ catchError (do
            put st
-           x  <- withEnv initEnv $ do
+           x  <- withEnv (initEnv
+                            { envEmacs                   = True
+                            , envInteractiveHighlighting = highlighting
+                            }) $ do
                    case independence cmd of
                      Dependent             -> ensureFileLoaded current
                      Independent Nothing   ->
                        -- Make sure that the include directories have
                        -- been set.
-                       setCommandLineOptions =<< commandLineOptions
+                       setCommandLineOptions' =<< commandLineOptions
                      Independent (Just is) -> do
                        ex <- liftIO $ doesFileExist $ filePath current
                        setIncludeDirs is $
                          if ex then ProjectRoot current else CurrentDir
-                   command $ makeSilent cmd
+                   command $ {-makeSilent-} cmd
            st <- get
            return (Right (x, st))
          ) (\e -> do
@@ -164,7 +169,7 @@ ioTCM' current highlighting cmd = infoOnException $ do
     Right (Right _)        -> return Nothing
  where
   displayErrorAndExit es range err = return $ Just err
-
+-}
 
 
 

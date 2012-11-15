@@ -1,5 +1,5 @@
 name:                activehs
-version:             0.3
+version:             0.3.0.1
 category:            Education, Documentation
 synopsis:            Haskell code presentation tool
 description:
@@ -51,34 +51,35 @@ Executable activehs
     Html,
     QuickCheck,
     CheckAgdaCode,
+    AgdaHighlight,
     Special
 
   Build-Depends:
-    Agda == 2.3.0.1,
+    Agda >= 2.3.0.1 && < 2.4,
     highlighting-kate >= 0.5 && < 0.6,
     hoogle >= 4.2.11 && < 4.3,
     dia-base >= 0.1 && < 0.2,
     dia-functions >= 0.2.1.1 && < 0.3,
     activehs-base >= 0.2 && < 0.4,
     data-pprint >= 0.2 && < 0.3,
-    base >= 4.0 && < 4.6,
-    QuickCheck >= 2.4 && < 2.5,
+    base >= 4.0 && < 4.7,
+    QuickCheck >= 2.4 && < 2.6,
     array >= 0.3 && < 0.5,
-    directory >= 1.1 && < 1.2,
-    containers >= 0.4 && < 0.5,
+    directory >= 1.1 && < 1.3,
+    containers >= 0.4 && < 0.6,
     filepath >= 1.2 && < 1.4,
     text >= 0.11 && < 0.12,
     snap-core >= 0.6 && < 0.10,
     snap-server >= 0.6 && < 0.10,
     syb >= 0.2 && < 0.4,
     haskell-src-exts >= 1.12 && < 1.14,
-    bytestring >= 0.9 && < 0.10,
+    bytestring >= 0.9 && < 0.11,
     utf8-string >= 0.3 && < 0.4,
     xhtml >= 3000.2 && < 3000.3,
-    blaze-html >= 0.4 && < 0.5,
+    blaze-html >= 0.4 && < 0.6,
     pureMD5 >= 2.1 && < 2.2,
     deepseq >= 1.1 && < 1.4,
-    split >= 0.1 && < 0.2,
+    split >= 0.1 && < 0.3,
     pandoc >= 1.8 && < 1.10,
     time >= 1.2 && < 1.5,
     old-time >= 1.0 && < 1.2,
@@ -87,5 +88,5 @@ Executable activehs
     simple-reflect >= 0.2 && < 0.3,
     mtl >= 2.0 && < 2.2,
     old-locale >= 1.0 && < 1.1,
-    cmdargs >= 0.7 && < 0.10
+    cmdargs >= 0.7 && < 0.11
 
