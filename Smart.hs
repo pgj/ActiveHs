@@ -188,7 +188,7 @@ pprint idi d
     | Just (f,g) <- fromDynamic d = ff $ displayArc' ((\x -> (f x, g x)) :: Double -> (Double, Double))
     | otherwise = return []
  where
-    ff = fmap g . render 10 (-16, -10) (16, 10) 0.5 1000 idi
+    ff = fmap g . render 10 (-16, -10) (16, 10) 0.5 2048 idi
     g (htm, err) = [Dia htm err]
     showFunc :: (RealFrac a, Real b) => (a -> b) -> Diagram
     showFunc = displayFun (-16,-10) (16,10)
