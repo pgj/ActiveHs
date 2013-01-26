@@ -39,7 +39,7 @@ data Args
 myargs :: Args
 myargs = Args
         { sourcedir     = "."     &= typDir         &= help "Directory of lhs files to serve. Default is '.'"
-        , includedir    = []      &= typDir         &= help "Additional include directory (eg. path of Agda Standard Library). You can specify more than one. Empty by default."
+        , includedir    = []      &= typDir         &= help "Additional include directory. You can specify more than one. Empty by default."
         , gendir        = "html"  &= typDir         &= help "Directory to put generated content to serve. Default is 'html'"
         , exercisedir   = "exercise" &= typDir      &= help "Directory to put generated exercises to serve. Default is 'exercise'"
         , templatedir   = ""      &= typDir         &= help "Directory of html template files for pandoc. Default points to the distribution's directory."

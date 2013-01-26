@@ -6,7 +6,6 @@ module Special
 
 import Smart
 import QuickCheck
-import CheckAgdaCode
 import Result
 import Lang
 import Html
@@ -100,8 +99,6 @@ exerciseServer' qualifier ch verbose fn sol lang m5 task = do
                 ss <- quickCheck qualifier m5 lang ch fn' (T.unpack sol) funnames is
                 let ht = head $ [x | ModifyCommandLine x <- ss] ++ [""]
                 return [ShowInterpreter lang 59 (getTwo "eval2" (takeFileName fn) j i j) j 'E' ht ss]
-            "agda" -> do
-                typeCheckAgdaCode sourcedirs m5 lang {-ch-} fn' (T.unpack sol)
 
 tmpSaveHs :: String -> String -> T.Text -> IO FilePath
 tmpSaveHs ext x s = do
@@ -110,7 +107,6 @@ tmpSaveHs ext x s = do
         tmp = tmpdir </> name ++ "." ++ ext
     T.writeFile tmp $ case ext of
         "hs" -> s
-        "agda" -> T.pack ("module " ++ name ++ " where\n\n") `T.append` s
     return tmp
 
 

@@ -15,9 +15,6 @@ import Args
 import qualified Language.Haskell.Exts.Pretty as HPty
 import qualified Language.Haskell.Exts.Syntax as HSyn
 
-import qualified Agda.Syntax.Concrete as ASyn
-import qualified Agda.Utils.Pretty as AUtil
-
 import Text.XHtml.Strict hiding (lang)
 import Text.Pandoc
 
@@ -48,14 +45,8 @@ convert ghci args@(Args {magicname, sourcedir, gendir, recompilecmd, verbose}) w
                 else fail $ unlines [unwords [recompilecmd, input], show x, out, err]
         when verbose $ putStrLn $ output ++ " is out of date, regenerating"
         mainParse HaskellMode input  >>= extract HaskellMode verbose ghci args what
-    whenOutOfDate () output input2 $ do
-    -- watch object code (*.lagdai?) like in haskell mode?
-        when verbose $ putStrLn $ output ++ " is out of date, regenerating"
-        mainParse AgdaMode input2 >>= extract AgdaMode verbose ghci args what
---        return True
  where
     input  = sourcedir  </> what <.> "lhs"
-    input2 = sourcedir  </> what <.> "lagda"
     output = gendir     </> what <.> "xml"
     object = sourcedir  </> what <.> "o"
 
@@ -78,7 +69,6 @@ extract mode verbose ghci (Args {lang, templatedir, sourcedir, exercisedir, gend
  where
     ext = case mode of
         HaskellMode -> "hs"
-        AgdaMode    -> "agda"
     
     lang' = case span (/= '_') . reverse $ what of
         (l, "")                -> lang
@@ -106,7 +96,6 @@ extract mode verbose ghci (Args {lang, templatedir, sourcedir, exercisedir, gend
             HPty.prettyPrint $ 
               HSyn.Module loc (HSyn.ModuleName "Main") directives Nothing Nothing
                 ([mkImport modname funnames, mkImport_ ('X':magicname) modname] ++ imps) []
-        AgdaModule (directives, ASyn.Module loc modname _ _ : _) -> "open import " ++ show modname ++ " hiding ( " ++ intercalate "; " funnames ++ " )" 
         _ -> error "error in Converter.extract"
 
     mkCodeBlock l =
@@ -243,10 +232,6 @@ showEnv HaskellMode prelude
     =  "{-# LINE 1 \"testenv\" #-}\n"
     ++ prelude
     ++ "\n{-# LINE 1 \"input\" #-}\n"
-showEnv AgdaMode prelude
-    =  "{- LINE 1 \"testenv\" -}\n"
-    ++ prelude
-    ++ "\n{- LINE 1 \"input\" -}\n"
 
 mkImport :: String -> [Name] -> HSyn.ImportDecl
 mkImport m d 
