@@ -23,6 +23,7 @@ import Data.List (tails, partition, groupBy)
 import Data.Function (on)
 import Data.Char (isAlpha, isSpace, toUpper, isUpper)
 import Control.Monad (zipWithM)
+import qualified Data.Set as Set
 
 --------------------------------- data structures
 
@@ -91,10 +92,10 @@ mainParse mode s = do
         preprocess l | take 3 (dropWhile (==' ') $ reverse l) == "-- " = []
                      | otherwise = [l]
         
-        pState = defaultParserState
-            { stateSmart = True
-            , stateStandalone = True
-            , stateLiterateHaskell = True 
+        pState = def
+            { readerSmart = True
+            , readerStandalone = True
+            , readerExtensions = Set.insert Ext_literate_haskell $ readerExtensions def
             }
         
         interpreter :: BBlock -> BBlock
@@ -102,9 +103,6 @@ mainParse mode s = do
             = OneLineExercise (toUpper x) (isUpper x) e
         interpreter a = a
         
-        highlight :: BBlock -> BBlock
-        highlight a = a
-
 ------------------------------
 
 collectTests :: ParseMode -> [BBlock] -> IO [BBlock]

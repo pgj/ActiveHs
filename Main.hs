@@ -36,7 +36,7 @@ import Control.Monad (when)
 import Control.Applicative ((<|>))
 import Data.Time (getCurrentTime, diffUTCTime)
 import Data.Maybe (listToMaybe)
-import Prelude hiding (catch)
+--import Prelude hiding (catch)
 
 ---------------------------------------------------------------
 

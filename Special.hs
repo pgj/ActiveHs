@@ -27,7 +27,7 @@ import System.FilePath ((</>),takeFileName)
 import System.Directory (getTemporaryDirectory)
 
 import Control.Concurrent (threadDelay, forkIO, killThread)
-import Prelude hiding (catch)
+--import Prelude hiding (catch)
 
 
 ---------------------------------------------------------------

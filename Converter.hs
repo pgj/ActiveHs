@@ -23,7 +23,7 @@ import System.Cmd
 import System.FilePath
 import System.Exit
 import System.Directory (getTemporaryDirectory, getModificationTime, doesFileExist, getTemporaryDirectory, createDirectoryIfMissing)
-import System.Time (diffClockTimes, noTimeDiff) 
+--import Data.Time (diffUTCTime) 
 
 import Control.Monad
 import Data.List
@@ -59,7 +59,7 @@ extract mode verbose ghci (Args {lang, templatedir, sourcedir, exercisedir, gend
     ht <- readFile' $ templatedir </> lang' ++ ".template"
 
     writeFile' (gendir </> what <.> "xml") $ flip writeHtmlString (Pandoc meta $ concat ss')
-      $ defaultWriterOptions
+      $ def
         { writerStandalone      = True
         , writerTableOfContents = True
         , writerSectionDivs     = True
@@ -96,7 +96,7 @@ extract mode verbose ghci (Args {lang, templatedir, sourcedir, exercisedir, gend
             HPty.prettyPrint $ 
               HSyn.Module loc (HSyn.ModuleName "Main") directives Nothing Nothing
                 ([mkImport modname funnames, mkImport_ ('X':magicname) modname] ++ imps) []
-        _ -> error "error in Converter.extract"
+--        _ -> error "error in Converter.extract"
 
     mkCodeBlock l =
         [ CodeBlock ("", ["haskell"], []) $ intercalate "\n" l | not $ null l ]
@@ -198,7 +198,7 @@ preprocessForSlides x = case span (not . isLim) x of
     isLim (Text HorizontalRule) = True
     isLim _ = False
 
-    isHeader (Text (Header _ _)) = True
+    isHeader (Text (Header {})) = True
     isHeader _ = False
 
 ------------------------------------
@@ -257,7 +257,7 @@ whenOutOfDate def x src m = do
     b <- modTime src
     case (a, b) of
         (Nothing, Just _) -> m
-        (Just t1, Just t2) | diffClockTimes t2 t1 > noTimeDiff -> m
+        (Just t1, Just t2) | t1 < t2 -> m
         _   -> return def
  where
     modTime f = do
