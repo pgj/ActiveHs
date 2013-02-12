@@ -5,6 +5,7 @@ import HoogleCustom
 import Specialize
 import Lang
 import Result
+import Logger
 import qualified Simple
 
 import ActiveHs.Base (WrapData2 (..), WrapData(..))
@@ -21,7 +22,6 @@ import Data.Data.GenRep.Doc (toDoc)
 import Language.Haskell.Interpreter hiding (eval)
 import Data.Digest.Pure.MD5
 import Hoogle (Database, loadDatabase)
-import System.FastLogger
 
 import System.Locale (defaultTimeLocale)
 import Data.Time (getCurrentTime, formatTime)
@@ -34,7 +34,7 @@ import Data.Dynamic hiding (typeOf)
 import qualified Data.Data as D
 import Data.List (nub)
 import Data.Char (isAlpha)
-import Prelude hiding (catch)
+--import Prelude hiding (catch)
 
 
 ----------------------------------------------------------------------
@@ -46,12 +46,12 @@ data TaskChan
         , chan      :: Simple.TaskChan
         }
 
-startGHCiServer :: [FilePath] -> FilePath -> FilePath -> IO TaskChan
-startGHCiServer searchpaths logfilebase dbname = do
+startGHCiServer :: Int -> [FilePath] -> FilePath -> FilePath -> IO TaskChan
+startGHCiServer level searchpaths logfilebase dbname = do
     ti <- getCurrentTime
  -- log <- newLogger $ logfilebase ++ "_" ++ formatTime defaultTimeLocale "%Y-%m-%d-%H:%M:%S" ti ++ ".log"
  -- colons are not supported in filenames under windows
-    log <- newLogger $ logfilebase ++ "_" ++ formatTime defaultTimeLocale "%Y-%m-%d-%H-%M-%S" ti ++ ".log"
+    log <- newLogger level $ logfilebase ++ "_" ++ formatTime defaultTimeLocale "%Y-%m-%d-%H-%M-%S" ti ++ ".log"
     db <- if (dbname == "") then return Nothing else fmap Just $ loadDatabase dbname
     ch <- Simple.startGHCiServer
             searchpaths
@@ -81,7 +81,7 @@ logMsgWithImportance :: Int -> Logger -> B.ByteString -> IO ()
 logMsgWithImportance n ch x = do
     v <- timestampedLogEntry $ B.concat 
         [nn, "    ", x, "    ", nn]
-    logMsg ch v 
+    logMsg 0 ch v 
  where
     nn = fromString $ replicate n '#'
 

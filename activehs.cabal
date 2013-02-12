@@ -49,6 +49,7 @@ Executable activehs
     Result,
     HoogleCustom,
     Html,
+    Logger,
     QuickCheck,
     Special
 

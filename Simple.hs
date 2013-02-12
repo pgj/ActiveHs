@@ -17,7 +17,7 @@ import Control.Exception (SomeException, catch)
 import Control.Monad (when, forever)
 import Control.Monad.Error (MonadError, catchError)
 import Data.List (isPrefixOf)
-import Prelude hiding (catch)
+--import Prelude hiding (catch)
 
 -------------------------
 

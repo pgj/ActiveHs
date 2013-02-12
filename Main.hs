@@ -9,6 +9,7 @@ import Converter
 import Args
 import Special
 import Lang
+import Logger
 import Result
 import Html
 
@@ -18,7 +19,6 @@ import Snap.Http.Server.Config
 import Snap.Util.FileServe (getSafePath, serveDirectoryWith, simpleDirectoryConfig)
 
 import Data.Digest.Pure.MD5 (md5)
-import System.FastLogger
 
 import qualified Data.Text as T
 import qualified Data.Text.IO as T
@@ -44,9 +44,9 @@ main :: IO ()
 main = getArgs >>= mainWithArgs
 
 mainWithArgs :: Args -> IO ()
-mainWithArgs args@(Args {port, static, logdir, hoogledb, fileservedir, gendir, mainpage, restartpath, sourcedir, includedir}) = do 
+mainWithArgs args@(Args {verbose, port, static, logdir, hoogledb, fileservedir, gendir, mainpage, restartpath, sourcedir, includedir}) = do 
 
-    ch <- startGHCiServer [sourcedir] (logdir </> "interpreter") hoogledb
+    ch <- startGHCiServer verbose [sourcedir] (logdir </> "interpreter") hoogledb
     cache <- newCache 10
 
     httpServe
@@ -88,7 +88,7 @@ mainWithArgs args@(Args {port, static, logdir, hoogledb, fileservedir, gendir, m
 logNormalMsg :: TaskChan -> String -> IO ()
 logNormalMsg ch x = do
     v <- timestampedLogEntry $ fromString x
-    logMsg (logger ch) v 
+    logMsg 1 (logger ch) v 
 
 getParam' :: ByteString -> Snap (Maybe T.Text)
 getParam' = fmap (fmap $ decodeUtf8With lenientDecode) . getParam

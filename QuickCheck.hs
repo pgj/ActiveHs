@@ -4,6 +4,7 @@ import Smart
 import ActiveHs.Base (WrapData2 (WrapData2), TestCase (TestCase))
 import Lang
 import Result
+import Logger
 import Qualify (qualify)
 
 import Data.Digest.Pure.MD5
@@ -18,14 +19,33 @@ import Control.Concurrent.MVar
 ---------------------------------------
 
 quickCheck
-    :: String -> MD5Digest -> Language -> TaskChan -> FilePath -> String -> [String] -> [([String],String)] 
+    :: String
+    -> MD5Digest
+    -> Language
+    -> TaskChan
+    -> FilePath
+    -> String
+    -> [String]
+    -> [([String],String)]      -- test cases
     -> IO [Result]
-quickCheck qualifier m5 lang ch fn ft funnames is
-    = case allRight $ map (qualify qualifier funnames . snd) is of
-        Left err -> return [Error True err]
-        Right s_ -> interp False m5 lang ch fn "" $ \a ->
-            do  m <- interpret (mkTestCases [(v,s,s') | ((v,s),s')<- zip is s_]) (as :: [TestCase])
-                return $ qcs lang m
+quickCheck qualifier m5 lang ch fn ft funnames testcases = do
+    logStrMsg 2 (logger ch) $ "test cases: " ++ show testcases
+    logStrMsg 2 (logger ch) $ "names to be qualified: " ++ show funnames
+
+
+    case allRight $ map (qualify qualifier funnames . snd) testcases of
+        Left err -> do
+            logStrMsg 2 (logger ch) $ "Error in qualification: " ++ err
+            return [Error True err]
+        Right s_ -> do
+            logStrMsg 2 (logger ch) $ "Qualified expressions: " ++ show s_
+
+            let ts = mkTestCases [(v,s,s') | ((v,s),s')<- zip testcases s_]
+            logStrMsg 2 (logger ch) $ "Test cases: " ++ ts
+            
+            interp False m5 lang ch fn "" $ \a ->
+                do  m <- interpret ts (as :: [TestCase])
+                    return $ qcs lang m
 
   where
     allRight :: [Either a b] -> Either a [b]

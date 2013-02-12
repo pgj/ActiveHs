@@ -29,7 +29,7 @@ data Args
         , port          :: Int
         , lang          :: String
         , static        :: Bool
-        , verbose       :: Bool
+        , verbose       :: Int
         , verboseinterpreter :: Bool
         , recompilecmd  :: String
         , magicname     :: String
@@ -54,7 +54,7 @@ myargs = Args
         , lang          = "en"    &= typ "LANGUAGE" &= help "Default language. It is 'en' by default."
         , port          = 8000    &= typ "PORT"     &= help "Port to listen"
         , static        = False                     &= help "Do not regenerate pages."
-        , verbose       = False                     &= help "Verbose activehs output"
+        , verbose       = 0                         &= help "Verbose activehs output"
         , verboseinterpreter = False                &= help "Verbose interpreter output in the browser"
         , recompilecmd  = "ghc -O" &= typ "COMMAND" &= help "Command to run before page generation. Default is 'ghc -O'."
         , magicname    = "a9xYf"  &= typ "VARNAME"  &= help "Magic variable name."

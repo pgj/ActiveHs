@@ -27,6 +27,7 @@ import System.Directory (getTemporaryDirectory, getModificationTime, doesFileExi
 
 import Control.Monad
 import Data.List
+import Data.Char
 
 ----------------------------------
 
@@ -34,7 +35,7 @@ convert :: TaskChan -> Args -> String -> IO ()
 convert ghci args@(Args {magicname, sourcedir, gendir, recompilecmd, verbose}) what = do
     whenOutOfDate () output input $ do
         whenOutOfDate () object input $ do
-            when verbose $ putStrLn $ object ++ " is out of date, regenerating"
+            when (verbose > 0) $ putStrLn $ object ++ " is out of date, regenerating"
 --            x <- system $ recompilecmd ++ " " ++ input
             let (ghc:args) = words recompilecmd -- !!!
             (x, out, err) <- readProcessWithExitCode ghc (args ++ [input]) ""
@@ -43,8 +44,8 @@ convert ghci args@(Args {magicname, sourcedir, gendir, recompilecmd, verbose}) w
                     restart ghci
                     return ()
                 else fail $ unlines [unwords [recompilecmd, input], show x, out, err]
-        when verbose $ putStrLn $ output ++ " is out of date, regenerating"
-        mainParse HaskellMode input  >>= extract HaskellMode verbose ghci args what
+        when (verbose > 0) $ putStrLn $ output ++ " is out of date, regenerating"
+        mainParse HaskellMode input  >>= extract HaskellMode (verbose > 0) ghci args what
  where
     input  = sourcedir  </> what <.> "lhs"
     output = gendir     </> what <.> "xml"
@@ -242,8 +243,13 @@ mkImport m d
         , HSyn.importSrc = False
         , HSyn.importPkg = Nothing
         , HSyn.importAs = Nothing
-        , HSyn.importSpecs = Just (True, map (HSyn.IVar . HSyn.Ident) d)
+        , HSyn.importSpecs = Just (True, map (HSyn.IVar . mkName) d)
         }
+
+mkName :: String -> HSyn.Name
+mkName n@(c:_)
+    | isSymbol c = HSyn.Symbol n
+mkName n = HSyn.Ident n
 
 mkImport_ :: String -> String -> HSyn.ImportDecl
 mkImport_ magic m 
