@@ -13,6 +13,7 @@ import qualified Test.QuickCheck.Property as QC
 
 import Data.Char (isLower)
 import Data.List (intercalate)
+import Control.Monad (join)
 import Control.Concurrent.MVar
 
 ---------------------------------------
@@ -31,7 +32,6 @@ quickCheck qualifier m5 lang ch fn ft funnames testcases = do
     logStrMsg 3 (logger ch) $ "test cases: " ++ show testcases
     logStrMsg 3 (logger ch) $ "names to be qualified: " ++ show funnames
 
-
     case allRight $ map (qualify qualifier funnames . snd) testcases of
         Left err -> do
             logStrMsg 3 (logger ch) $ "Error in qualification: " ++ err
@@ -43,15 +43,12 @@ quickCheck qualifier m5 lang ch fn ft funnames testcases = do
             logStrMsg 3 (logger ch) $ "Test cases: " ++ ts
             
             interp False m5 lang ch fn "" $ \a ->
-                do  m <- interpret ts (as :: [TestCase])
-                    return $ qcs lang m
+                do  liftIO $ logStrMsg 3 (logger ch) "Before interpretation"
+                    m <- interpret ts (as :: [TestCase])
+                    liftIO $ logStrMsg 3 (logger ch) "After interpretation"
+                    return $ qcs lang (logger ch) m
 
   where
-    allRight :: [Either a b] -> Either a [b]
-    allRight x = case [s | Left s<-x] of
-        (y:_) -> Left y
-        []    -> Right [s | Right s<-x]
-
     mkTestCases ss 
         = "[" ++ intercalate ", " (map mkTestCase ss) ++ "]"
 
@@ -59,7 +56,6 @@ quickCheck qualifier m5 lang ch fn ft funnames testcases = do
         = "TestCase (\\qcinner " 
         ++ unwords ["(" ++ v ++ ")" | v<-vars] 
         ++ " -> qcinner (" ++ showTr vars s ++ ", " ++ parens s ++ ", " ++ parens s2 ++ "))"
-
 
     showTr vars s = "unwords [" ++ intercalate ", " (map g $ words s) ++ "]"  -- !!!
      where
@@ -71,31 +67,39 @@ quickCheck qualifier m5 lang ch fn ft funnames testcases = do
         g x | x `elem` vs = {- "\"(\" ++ -} " show " ++ x -- ++ " ++ \")\""
         g x = show x
 
-qcs :: Language -> [TestCase] -> IO [Result]
-qcs lang [] = return [Message (translate lang "All test cases are completed.") Nothing]
-qcs lang (t:ts) = do
-    s' <- qc lang t
-    case s' of
-        Just rep -> rep
-        Nothing  -> qcs lang ts
+qcs :: Language -> Logger -> [TestCase] -> IO [Result]
+qcs lang log = join . foldM (return [Message (translate lang "All test cases are completed.") Nothing]) (qc lang log)
 
 -- test = qc $ TestCase $ \f (QCNat x) (QCInt y) -> f (show x ++ " + " ++ show y, min 10 (x + y), x + y)
 -- test' = qc $ TestCase $ \f (QCInt x) -> f ("sqr " ++ show x, min 10 (x*x), x*x)
 
-qc :: Language -> TestCase -> IO (Maybe (IO [Result]))
-qc lang (TestCase p) = do
+qc :: Language -> Logger -> TestCase -> IO (Maybe (IO [Result]))
+qc lang log (TestCase p) = do
     v <- newMVar Nothing
-    _ <- quickCheckWithResult (stdArgs { chatty = False }) $ {- QC.noShrinking $ -} p $ ff v
+    let ff (s, x, y)
+            = QC.whenFail (modifyMVar_ v $ const $ return $ Just $ fmap (ModifyCommandLine s :) res)
+            $ QC.morallyDubiousIOProperty
+            $ fmap (\s -> if hasError s then QC.failed else QC.succeeded) res
+          where
+            res = do
+                logStrMsg 4 log $ "compare: " ++ s
+                compareClearGen lang "noId" $ WrapData2 x y
+    _ <- quickCheckWithResult (stdArgs { chatty = False }) $ {- QC.noShrinking $ -} p ff
     takeMVar v
- where
-    ff v (s, x, y)
-        = QC.whenFail (modifyMVar_ v $ const $ return $ Just $ fmap (ModifyCommandLine s :) res)
-        $ QC.morallyDubiousIOProperty
-        $ fmap f res
-      where
-        res = compareClearGen lang "noId" $ WrapData2 x y
 
-    f s | hasError s = QC.failed
-    f s = QC.succeeded
+------------------------------------
+
+allRight :: [Either a b] -> Either a [b]
+allRight x = case [s | Left s<-x] of
+    (y:_) -> Left y
+    []    -> Right [s | Right s<-x]
+
+foldM :: Monad m => r -> (a -> m (Maybe r)) -> [a] -> m r
+foldM end _ [] = return end
+foldM end f (t:ts) = do
+    x <- f t
+    case x of
+        Just r -> return r
+        Nothing  -> foldM end f ts
 
 
