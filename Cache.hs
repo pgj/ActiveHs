@@ -6,7 +6,7 @@ module Cache
     , clearCache
     ) where
 
-import Data.Digest.Pure.MD5 (MD5Digest)
+import Hash
 
 import Control.Concurrent.MVar (MVar, newEmptyMVar, readMVar, putMVar)
 import Data.Array.IO (IOArray, newArray, readArray, writeArray, getBounds)
@@ -22,7 +22,7 @@ data Cache a
 
 data CacheEntry a
     = CacheEntry 
-        { question :: MD5Digest
+        { question :: Hash
         , answer   :: MVar a
         }
 
@@ -39,7 +39,7 @@ clearCache c = do
     mapM_ (\i -> writeArray (array c) i []) [a..b]
 
 
-lookupCache :: Cache a -> MD5Digest -> IO (Either a (a -> IO ()))
+lookupCache :: Cache a -> Hash -> IO (Either a (a -> IO ()))
 lookupCache ch e = modifyCacheLine (array ch) (getIndex e) $ \vv ->
     case lookupIA (cacheLineSize ch) (\x -> e == question x) vv of
         (Just x_, c) -> do
@@ -63,7 +63,7 @@ lookupCache ch e = modifyCacheLine (array ch) (getIndex e) $ \vv ->
         writeArray ch i x'
         return r
 
-    getIndex :: MD5Digest -> Int
+    getIndex :: Hash -> Int
     getIndex e = 16 * digitToInt a + digitToInt b where (a:b:_) = show e
 
 

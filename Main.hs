@@ -12,13 +12,12 @@ import Lang
 import Logger
 import Result
 import Html
+import Hash
 
 import Snap.Core
 import Snap.Http.Server (httpServe)
 import Snap.Http.Server.Config
 import Snap.Util.FileServe (getSafePath, serveDirectoryWith, simpleDirectoryConfig)
-
-import Data.Digest.Pure.MD5 (md5)
 
 import qualified Data.Text as T
 import qualified Data.Text.IO as T
@@ -26,7 +25,6 @@ import Data.Text.Encoding (decodeUtf8With)
 import Data.Text.Encoding.Error (lenientDecode)
 import Data.ByteString (ByteString)
 import Data.ByteString.UTF8 (fromString)
-import qualified Data.ByteString.Lazy.UTF8 as Lazy
 
 import System.FilePath ((</>), takeExtension, dropExtension)
 import System.Directory (doesFileExist)
@@ -103,7 +101,7 @@ exerciseServer sourcedirs (cache, ch) args@(Args {magicname, lang, exercisedir, 
         writeText "<html xmlns=\"http://www.w3.org/1999/xhtml\"><body>Too long request.</body></html>"
         getResponse >>= finishWith . setResponseCode 400
 
-    let md5Id = md5 $ Lazy.fromString params   -- could be more efficient
+    let md5Id = mkHash params   -- could be more efficient
     liftIO $ logStrMsg 2 (logger ch) $ " eval " ++ show md5Id ++ " " ++ params
     j <- liftIO $ lookupCache cache md5Id
     (>>= writeText) $ case j of

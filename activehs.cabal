@@ -43,6 +43,7 @@ Executable activehs
     Simple,
     Smart,
     Cache,
+    Hash,
     Specialize,
     Qualify,
     Lang,

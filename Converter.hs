@@ -6,11 +6,12 @@ module Converter
 
 import Parse
 
-import Smart (TaskChan, restart, mkId, interp)
+import Smart (TaskChan, restart, interp)
 import Result (hasError)
 import Html
 import Lang
 import Args
+import Hash
 
 import qualified Language.Haskell.Exts.Pretty as HPty
 import qualified Language.Haskell.Exts.Syntax as HSyn
@@ -111,7 +112,7 @@ extract mode verbose ghci (Args {lang, templatedir, sourcedir, exercisedir, gend
         = return $ mkCodeBlock $ visihidden
 
     processBlock _ (Exercise _ visi hidden funnames is) = do
-        let i = show $ mkId $ unlines funnames
+        let i = show $ mkHash $ unlines funnames
             j = "_j" ++ i
             fn = what ++ "_" ++ i <.> ext
             (static_, inForm, rows) = if null hidden
@@ -128,7 +129,7 @@ extract mode verbose ghci (Args {lang, templatedir, sourcedir, exercisedir, gend
     processBlock ii (OneLineExercise 'H' erroneous exp) 
         = return []
     processBlock ii (OneLineExercise p erroneous exp) = do
-        let m5 = mkId $ show ii ++ exp
+        let m5 = mkHash $ show ii ++ exp
             i = show m5
             fn = what ++ (if p == 'R' then "_" ++ i else "") <.> ext
             act = getOne "eval" fn i i
@@ -150,7 +151,7 @@ extract mode verbose ghci (Args {lang, templatedir, sourcedir, exercisedir, gend
     processBlock _ (Text (CodeBlock ("",[t],[]) l)) 
         | t `elem` ["dot","neato","twopi","circo","fdp","dfdp","latex"] = do
             tmpdir <- getTemporaryDirectory
-            let i = show $ mkId $ t ++ l
+            let i = show $ mkHash $ t ++ l
                 fn = what ++ i
                 imgname = takeFileName fn <.> "png"
                 outfile = gendir </> fn <.> "png"

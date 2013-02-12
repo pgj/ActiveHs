@@ -4,7 +4,6 @@ module Smart
     , startGHCiServer
     , restart
     , TaskChan (..)
-    , mkId
     , interp
     , compareClearGen
     , compareMistGen
@@ -18,6 +17,7 @@ import Result
 import Logger
 import Simple hiding (TaskChan, startGHCiServer, eval)
 import qualified Simple
+import Hash
 
 import ActiveHs.Base (WrapData2 (..), WrapData(..))
 import Graphics.Diagrams (Diagram)
@@ -30,11 +30,7 @@ import Data.Data.GenRep hiding (Error)
 import Data.Data.GenRep.Functions (mistify, numberErrors)
 import Data.Data.GenRep.Doc (toDoc)
 
---import Language.Haskell.Interpreter hiding (eval)
-import Data.Digest.Pure.MD5
 import Hoogle (Database, loadDatabase)
-
-import qualified Data.ByteString.Lazy.UTF8 as Lazy
 
 import Control.Monad (join)
 import Data.Dynamic hiding (typeOf)
@@ -77,11 +73,6 @@ showErr lang (GhcException s)  = [ translate lang "GHC exception: " ++ s]
 
 ----------------------------------------------------------------------
 
-mkId :: String -> MD5Digest
-mkId = md5 . Lazy.fromString
-
-------------------
-
 getCommand :: String -> (String, String)
 getCommand (':':'?': (dropSpace -> Just x)) 
     = ("?", x)
@@ -96,7 +87,7 @@ dropSpace "" = Just ""
 dropSpace _ = Nothing
 
 
-interp :: Bool -> MD5Digest -> Language -> TaskChan -> FilePath -> String 
+interp :: Bool -> Hash -> Language -> TaskChan -> FilePath -> String 
     -> (String -> Interpreter (IO [Result])) -> IO [Result]
 interp  verboseinterpreter (show -> idi) lang ch fn s@(getCommand -> (c, a)) xy 
     = case c of

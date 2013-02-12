@@ -11,11 +11,9 @@ import Lang
 import Logger
 import Html
 import Qualify (qualify)
+import Hash
 
 import ActiveHs.Base (WrapData2)
-
---import Language.Haskell.Interpreter hiding (eval)
-import Data.Digest.Pure.MD5 (MD5Digest)
 
 import qualified Data.Text as T
 import qualified Data.Text.IO as T
@@ -58,7 +56,7 @@ exerciseServer'
     -> FilePath
     -> T.Text
     -> Language
-    -> MD5Digest
+    -> Hash
     -> SpecialTask
     -> IO [Result]
 
