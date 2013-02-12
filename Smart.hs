@@ -78,10 +78,8 @@ showErr lang (GhcException s)  = [ translate lang "GHC exception: " ++ s]
 ----------------------------------------------------------------------
 
 logMsgWithImportance :: Int -> Logger -> B.ByteString -> IO ()
-logMsgWithImportance n ch x = do
-    v <- timestampedLogEntry $ B.concat 
-        [nn, "    ", x, "    ", nn]
-    logMsg 0 ch v 
+logMsgWithImportance n ch x =
+    logMsg 0 ch $ B.concat [nn, "    ", x, "    ", nn]
  where
     nn = fromString $ replicate n '#'
 

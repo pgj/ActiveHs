@@ -86,9 +86,7 @@ mainWithArgs args@(Args {verbose, port, static, logdir, hoogledb, fileservedir, 
 ---------------------------------------------------------------
 
 logNormalMsg :: TaskChan -> String -> IO ()
-logNormalMsg ch x = do
-    v <- timestampedLogEntry $ fromString x
-    logMsg 1 (logger ch) v 
+logNormalMsg ch x = logStrMsg 1 (logger ch) x
 
 getParam' :: ByteString -> Snap (Maybe T.Text)
 getParam' = fmap (fmap $ decodeUtf8With lenientDecode) . getParam

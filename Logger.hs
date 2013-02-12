@@ -4,7 +4,6 @@ module Logger
     , newLogger
     , logMsg
     , logStrMsg
-    , timestampedLogEntry
     ) where
 
 import qualified System.FastLogger as SF
@@ -29,11 +28,8 @@ newLogger l path
 logStrMsg l lg
     = logMsg l lg . B.fromString
 
-logMsg l lg msg
-    = when (l <= level lg) (SF.logMsg (logger lg) msg)
-
-timestampedLogEntry
-    = SF.timestampedLogEntry
-
+logMsg l lg msg = do
+    msg' <- SF.timestampedLogEntry msg
+    when (l <= level lg) $ SF.logMsg (logger lg) msg'
 
 
