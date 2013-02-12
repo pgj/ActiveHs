@@ -14,7 +14,7 @@ import Qualify (qualify)
 
 import ActiveHs.Base (WrapData2)
 
-import Language.Haskell.Interpreter hiding (eval)
+--import Language.Haskell.Interpreter hiding (eval)
 import Data.Digest.Pure.MD5 (MD5Digest)
 
 import qualified Data.Text as T

@@ -1,11 +1,22 @@
 {-# LANGUAGE ViewPatterns, PatternGuards, OverloadedStrings #-}
-module Smart where
+module Smart
+    ( module Simple
+    , startGHCiServer
+    , restart
+    , TaskChan (..)
+    , mkId
+    , interp
+    , compareClearGen
+    , compareMistGen
+    , wrap2
+    ) where
 
 import HoogleCustom
 import Specialize
 import Lang
 import Result
 import Logger
+import Simple hiding (TaskChan, startGHCiServer, eval)
 import qualified Simple
 
 import ActiveHs.Base (WrapData2 (..), WrapData(..))
@@ -19,14 +30,10 @@ import Data.Data.GenRep hiding (Error)
 import Data.Data.GenRep.Functions (mistify, numberErrors)
 import Data.Data.GenRep.Doc (toDoc)
 
-import Language.Haskell.Interpreter hiding (eval)
+--import Language.Haskell.Interpreter hiding (eval)
 import Data.Digest.Pure.MD5
 import Hoogle (Database, loadDatabase)
 
-import System.Locale (defaultTimeLocale)
-import Data.Time (getCurrentTime, formatTime)
---import Data.ByteString.UTF8 (fromString)
---import qualified Data.ByteString as B
 import qualified Data.ByteString.Lazy.UTF8 as Lazy
 
 import Control.Monad (join)
@@ -46,11 +53,8 @@ data TaskChan
         , chan      :: Simple.TaskChan
         }
 
-startGHCiServer :: Int -> [FilePath] -> FilePath -> FilePath -> IO TaskChan
-startGHCiServer level searchpaths logfilebase dbname = do
-    ti <- getCurrentTime
-    log <- newLogger level $ logfilebase ++ "_" ++ formatTime defaultTimeLocale "%Y-%m-%d-%H-%M-%S" ti ++ ".log"
-             -- "%Y-%m-%d-%H:%M:%S" is not ok, colons are not supported in filenames under windows
+startGHCiServer :: [FilePath] -> Logger -> FilePath -> IO TaskChan
+startGHCiServer searchpaths log dbname = do
     db <- if (dbname == "") then return Nothing else fmap Just $ loadDatabase dbname
     ch <- Simple.startGHCiServer searchpaths log
     return $ TC
@@ -104,7 +108,7 @@ interp  verboseinterpreter (show -> idi) lang ch fn s@(getCommand -> (c, a)) xy
     c | c `elem` ["t","k",""]
        -> join 
         $ fmap (either (return . map (Error True) . showErr lang) id)
-        $ Simple.interpret (chan ch) fn
+        $ sendToServer (chan ch) fn
         $ case c of
             "t" -> catchE True $ do
                 xx <- typeOf a

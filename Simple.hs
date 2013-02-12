@@ -4,13 +4,17 @@ module Simple
     ( Task (..), TaskChan
     , startGHCiServer
     , restartGHCiServer
-    , interpret
+    , sendToServer
     , catchError_fixed
+
+    , Interpreter, typeOf, kindOf
+    , InterpreterError (..), errMsg, interpret
+    , as, liftIO, parens
     ) where
 
 import Logger
 
-import Language.Haskell.Interpreter hiding (interpret)
+import Language.Haskell.Interpreter
 
 import Control.Concurrent (forkIO)
 import Control.Concurrent.MVar (MVar, newEmptyMVar, takeMVar, putMVar)
@@ -77,8 +81,8 @@ startGHCiServer paths{-searchpaths-} log = do
 restartGHCiServer :: TaskChan -> IO ()
 restartGHCiServer (TC ch) = writeChan ch Nothing
 
-interpret :: TaskChan -> FilePath -> Interpreter a -> IO (Either InterpreterError a)
-interpret (TC ch) fn m = do
+sendToServer :: TaskChan -> FilePath -> Interpreter a -> IO (Either InterpreterError a)
+sendToServer (TC ch) fn m = do
     rep <- newEmptyMVar
     writeChan ch $ Just $ Task fn rep m
     takeMVar rep

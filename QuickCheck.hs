@@ -8,7 +8,7 @@ import Logger
 import Qualify (qualify)
 
 import Data.Digest.Pure.MD5
-import Language.Haskell.Interpreter hiding (eval)
+--import Language.Haskell.Interpreter hiding (eval)
 import Test.QuickCheck hiding (Result)
 import qualified Test.QuickCheck.Property as QC
 

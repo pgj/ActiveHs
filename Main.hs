@@ -30,11 +30,12 @@ import qualified Data.ByteString.Lazy.UTF8 as Lazy
 
 import System.FilePath ((</>), takeExtension, dropExtension)
 import System.Directory (doesFileExist)
-import Language.Haskell.Interpreter (liftIO)
+--import Language.Haskell.Interpreter (liftIO)
 import Control.Concurrent (threadDelay)
 import Control.Monad (when)
 import Control.Applicative ((<|>))
-import Data.Time (getCurrentTime, diffUTCTime)
+import System.Locale (defaultTimeLocale)
+import Data.Time (getCurrentTime, formatTime, diffUTCTime)
 import Data.Maybe (listToMaybe)
 --import Prelude hiding (catch)
 
@@ -46,7 +47,12 @@ main = getArgs >>= mainWithArgs
 mainWithArgs :: Args -> IO ()
 mainWithArgs args@(Args {verbose, port, static, logdir, hoogledb, fileservedir, gendir, mainpage, restartpath, sourcedir, includedir}) = do 
 
-    ch <- startGHCiServer verbose [sourcedir] (logdir </> "interpreter") hoogledb
+    ti <- getCurrentTime
+    log <- newLogger verbose $ 
+        logdir </> "interpreter_" ++ formatTime defaultTimeLocale "%Y-%m-%d-%H-%M-%S" ti ++ ".log"
+             -- "%Y-%m-%d-%H:%M:%S" is not ok, colons are not supported in filenames under windows
+
+    ch <- startGHCiServer [sourcedir] log hoogledb
     cache <- newCache 10
 
     httpServe
