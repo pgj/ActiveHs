@@ -6,17 +6,15 @@ module Converter
 
 import Parse
 
-import Smart (TaskChan, restart, mkId, interp)
+import Smart (TaskChan, restart, interp)
 import Result (hasError)
 import Html
 import Lang
 import Args
+import Hash
 
 import qualified Language.Haskell.Exts.Pretty as HPty
 import qualified Language.Haskell.Exts.Syntax as HSyn
-
-import qualified Agda.Syntax.Concrete as ASyn
-import qualified Agda.Utils.Pretty as AUtil
 
 import Text.XHtml.Strict hiding (lang)
 import Text.Pandoc
@@ -26,10 +24,11 @@ import System.Cmd
 import System.FilePath
 import System.Exit
 import System.Directory (getTemporaryDirectory, getModificationTime, doesFileExist, getTemporaryDirectory, createDirectoryIfMissing)
-import System.Time (diffClockTimes, noTimeDiff) 
+--import Data.Time (diffUTCTime) 
 
 import Control.Monad
 import Data.List
+import Data.Char
 
 ----------------------------------
 
@@ -37,7 +36,7 @@ convert :: TaskChan -> Args -> String -> IO ()
 convert ghci args@(Args {magicname, sourcedir, gendir, recompilecmd, verbose}) what = do
     whenOutOfDate () output input $ do
         whenOutOfDate () object input $ do
-            when verbose $ putStrLn $ object ++ " is out of date, regenerating"
+            when (verbose > 0) $ putStrLn $ object ++ " is out of date, regenerating"
 --            x <- system $ recompilecmd ++ " " ++ input
             let (ghc:args) = words recompilecmd -- !!!
             (x, out, err) <- readProcessWithExitCode ghc (args ++ [input]) ""
@@ -46,16 +45,10 @@ convert ghci args@(Args {magicname, sourcedir, gendir, recompilecmd, verbose}) w
                     restart ghci
                     return ()
                 else fail $ unlines [unwords [recompilecmd, input], show x, out, err]
-        when verbose $ putStrLn $ output ++ " is out of date, regenerating"
-        mainParse HaskellMode input  >>= extract HaskellMode verbose ghci args what
-    whenOutOfDate () output input2 $ do
-    -- watch object code (*.lagdai?) like in haskell mode?
-        when verbose $ putStrLn $ output ++ " is out of date, regenerating"
-        mainParse AgdaMode input2 >>= extract AgdaMode verbose ghci args what
---        return True
+        when (verbose > 0) $ putStrLn $ output ++ " is out of date, regenerating"
+        mainParse HaskellMode input  >>= extract HaskellMode (verbose > 0) ghci args what
  where
     input  = sourcedir  </> what <.> "lhs"
-    input2 = sourcedir  </> what <.> "lagda"
     output = gendir     </> what <.> "xml"
     object = sourcedir  </> what <.> "o"
 
@@ -68,7 +61,7 @@ extract mode verbose ghci (Args {lang, templatedir, sourcedir, exercisedir, gend
     ht <- readFile' $ templatedir </> lang' ++ ".template"
 
     writeFile' (gendir </> what <.> "xml") $ flip writeHtmlString (Pandoc meta $ concat ss')
-      $ defaultWriterOptions
+      $ def
         { writerStandalone      = True
         , writerTableOfContents = True
         , writerSectionDivs     = True
@@ -78,7 +71,6 @@ extract mode verbose ghci (Args {lang, templatedir, sourcedir, exercisedir, gend
  where
     ext = case mode of
         HaskellMode -> "hs"
-        AgdaMode    -> "agda"
     
     lang' = case span (/= '_') . reverse $ what of
         (l, "")                -> lang
@@ -106,8 +98,7 @@ extract mode verbose ghci (Args {lang, templatedir, sourcedir, exercisedir, gend
             HPty.prettyPrint $ 
               HSyn.Module loc (HSyn.ModuleName "Main") directives Nothing Nothing
                 ([mkImport modname funnames, mkImport_ ('X':magicname) modname] ++ imps) []
-        AgdaModule (directives, ASyn.Module loc modname _ _ : _) -> "open import " ++ show modname ++ " hiding ( " ++ intercalate "; " funnames ++ " )" 
-        _ -> error "error in Converter.extract"
+--        _ -> error "error in Converter.extract"
 
     mkCodeBlock l =
         [ CodeBlock ("", ["haskell"], []) $ intercalate "\n" l | not $ null l ]
@@ -121,7 +112,7 @@ extract mode verbose ghci (Args {lang, templatedir, sourcedir, exercisedir, gend
         = return $ mkCodeBlock $ visihidden
 
     processBlock _ (Exercise _ visi hidden funnames is) = do
-        let i = show $ mkId $ unlines funnames
+        let i = show $ mkHash $ unlines funnames
             j = "_j" ++ i
             fn = what ++ "_" ++ i <.> ext
             (static_, inForm, rows) = if null hidden
@@ -138,7 +129,7 @@ extract mode verbose ghci (Args {lang, templatedir, sourcedir, exercisedir, gend
     processBlock ii (OneLineExercise 'H' erroneous exp) 
         = return []
     processBlock ii (OneLineExercise p erroneous exp) = do
-        let m5 = mkId $ show ii ++ exp
+        let m5 = mkHash $ show ii ++ exp
             i = show m5
             fn = what ++ (if p == 'R' then "_" ++ i else "") <.> ext
             act = getOne "eval" fn i i
@@ -160,7 +151,7 @@ extract mode verbose ghci (Args {lang, templatedir, sourcedir, exercisedir, gend
     processBlock _ (Text (CodeBlock ("",[t],[]) l)) 
         | t `elem` ["dot","neato","twopi","circo","fdp","dfdp","latex"] = do
             tmpdir <- getTemporaryDirectory
-            let i = show $ mkId $ t ++ l
+            let i = show $ mkHash $ t ++ l
                 fn = what ++ i
                 imgname = takeFileName fn <.> "png"
                 outfile = gendir </> fn <.> "png"
@@ -209,7 +200,7 @@ preprocessForSlides x = case span (not . isLim) x of
     isLim (Text HorizontalRule) = True
     isLim _ = False
 
-    isHeader (Text (Header _ _)) = True
+    isHeader (Text (Header {})) = True
     isHeader _ = False
 
 ------------------------------------
@@ -243,10 +234,6 @@ showEnv HaskellMode prelude
     =  "{-# LINE 1 \"testenv\" #-}\n"
     ++ prelude
     ++ "\n{-# LINE 1 \"input\" #-}\n"
-showEnv AgdaMode prelude
-    =  "{- LINE 1 \"testenv\" -}\n"
-    ++ prelude
-    ++ "\n{- LINE 1 \"input\" -}\n"
 
 mkImport :: String -> [Name] -> HSyn.ImportDecl
 mkImport m d 
@@ -257,8 +244,13 @@ mkImport m d
         , HSyn.importSrc = False
         , HSyn.importPkg = Nothing
         , HSyn.importAs = Nothing
-        , HSyn.importSpecs = Just (True, map (HSyn.IVar . HSyn.Ident) d)
+        , HSyn.importSpecs = Just (True, map (HSyn.IVar . mkName) d)
         }
+
+mkName :: String -> HSyn.Name
+mkName n@(c:_)
+    | isSymbol c = HSyn.Symbol n
+mkName n = HSyn.Ident n
 
 mkImport_ :: String -> String -> HSyn.ImportDecl
 mkImport_ magic m 
@@ -272,7 +264,7 @@ whenOutOfDate def x src m = do
     b <- modTime src
     case (a, b) of
         (Nothing, Just _) -> m
-        (Just t1, Just t2) | diffClockTimes t2 t1 > noTimeDiff -> m
+        (Just t1, Just t2) | t1 < t2 -> m
         _   -> return def
  where
     modTime f = do

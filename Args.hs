@@ -29,7 +29,7 @@ data Args
         , port          :: Int
         , lang          :: String
         , static        :: Bool
-        , verbose       :: Bool
+        , verbose       :: Int
         , verboseinterpreter :: Bool
         , recompilecmd  :: String
         , magicname     :: String
@@ -39,7 +39,7 @@ data Args
 myargs :: Args
 myargs = Args
         { sourcedir     = "."     &= typDir         &= help "Directory of lhs files to serve. Default is '.'"
-        , includedir    = []      &= typDir         &= help "Additional include directory (eg. path of Agda Standard Library). You can specify more than one. Empty by default."
+        , includedir    = []      &= typDir         &= help "Additional include directory. You can specify more than one. Empty by default."
         , gendir        = "html"  &= typDir         &= help "Directory to put generated content to serve. Default is 'html'"
         , exercisedir   = "exercise" &= typDir      &= help "Directory to put generated exercises to serve. Default is 'exercise'"
         , templatedir   = ""      &= typDir         &= help "Directory of html template files for pandoc. Default points to the distribution's directory."
@@ -54,7 +54,7 @@ myargs = Args
         , lang          = "en"    &= typ "LANGUAGE" &= help "Default language. It is 'en' by default."
         , port          = 8000    &= typ "PORT"     &= help "Port to listen"
         , static        = False                     &= help "Do not regenerate pages."
-        , verbose       = False                     &= help "Verbose activehs output"
+        , verbose       = 2                         &= help "Verbose activehs output"
         , verboseinterpreter = False                &= help "Verbose interpreter output in the browser"
         , recompilecmd  = "ghc -O" &= typ "COMMAND" &= help "Command to run before page generation. Default is 'ghc -O'."
         , magicname    = "a9xYf"  &= typ "VARNAME"  &= help "Magic variable name."

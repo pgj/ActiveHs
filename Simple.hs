@@ -4,11 +4,17 @@ module Simple
     ( Task (..), TaskChan
     , startGHCiServer
     , restartGHCiServer
-    , interpret
+    , sendToServer
     , catchError_fixed
+
+    , Interpreter, typeOf, kindOf
+    , InterpreterError (..), errMsg, interpret
+    , as, liftIO, parens
     ) where
 
-import Language.Haskell.Interpreter hiding (interpret)
+import Logger
+
+import Language.Haskell.Interpreter
 
 import Control.Concurrent (forkIO)
 import Control.Concurrent.MVar (MVar, newEmptyMVar, takeMVar, putMVar)
@@ -17,7 +23,7 @@ import Control.Exception (SomeException, catch)
 import Control.Monad (when, forever)
 import Control.Monad.Error (MonadError, catchError)
 import Data.List (isPrefixOf)
-import Prelude hiding (catch)
+--import Prelude hiding (catch)
 
 -------------------------
 
@@ -29,17 +35,17 @@ newtype TaskChan
 
 ---------------
 
-startGHCiServer :: [String] -> (String -> IO ()) -> (String -> IO ()) -> IO TaskChan
-startGHCiServer paths{-searchpaths-} logError logMsg = do
+startGHCiServer :: [String] -> Logger -> IO TaskChan
+startGHCiServer paths{-searchpaths-} log = do
     ch <- newChan 
 
     _ <- forkIO $ forever $ do
-        logMsg "start interpreter"
+        logStrMsg 1 log "start interpreter"
         e <- runInterpreter (handleTask ch Nothing)
               `catch` \(e :: SomeException) ->
                 return $ Left $ UnknownError "GHCi server died."
         case e of
-            Left  e  -> logError $ "stop interpreter: " ++ show e
+            Left  e  -> logStrMsg 0 log $ "stop interpreter: " ++ show e
             Right () -> return ()
 
     return $ TC ch
@@ -50,7 +56,7 @@ startGHCiServer paths{-searchpaths-} logError logMsg = do
         task <- lift $ readChan ch
         case task of
             Just task -> handleTask_ ch oldFn task
-            Nothing   -> liftIO $ logError "interpreter stopped intentionally"
+            Nothing   -> liftIO $ logStrMsg 0 log "interpreter stopped intentionally"
 
     handleTask_ ch oldFn (Task fn repVar m) = do
         (cont, res) <- do  
@@ -75,8 +81,8 @@ startGHCiServer paths{-searchpaths-} logError logMsg = do
 restartGHCiServer :: TaskChan -> IO ()
 restartGHCiServer (TC ch) = writeChan ch Nothing
 
-interpret :: TaskChan -> FilePath -> Interpreter a -> IO (Either InterpreterError a)
-interpret (TC ch) fn m = do
+sendToServer :: TaskChan -> FilePath -> Interpreter a -> IO (Either InterpreterError a)
+sendToServer (TC ch) fn m = do
     rep <- newEmptyMVar
     writeChan ch $ Just $ Task fn rep m
     takeMVar rep

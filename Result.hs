@@ -51,8 +51,10 @@ errors (ShowInterpreter _ _ _ _ _ _ g) = any errors g
 errors _ = False
 
 filterResults :: [Result] -> [Result]
-filterResults rs = case filter (not . weakError) rs of
-    [] -> take 1 rs
+filterResults rs = case filter (not . weakOrHardError) rs of
+    [] -> case [e | e@(Error True _) <- rs] of
+            [] -> take 1 rs
+            rs -> take 1 rs
     rs -> case filter (not . searchResult) rs of
         [] -> rs
         rs -> {- nubBy f -} rs
@@ -63,14 +65,14 @@ filterResults rs = case filter (not . weakError) rs of
 -}
 
 hasError :: [Result] -> Bool
-hasError rs = case filter (not . weakError) rs of
+hasError rs = case filter (not . weakOrHardError) rs of
     [] -> True
     rs -> any errors rs
 
-weakError :: Result -> Bool
-weakError (Error _ _) = True
-weakError (ExprType b _ _ _) = b
-weakError _ = False
+weakOrHardError :: Result -> Bool
+weakOrHardError (Error _ _) = True
+weakOrHardError (ExprType b _ _ _) = b
+weakOrHardError _ = False
 
 searchResult :: Result -> Bool
 searchResult (SearchResults _ _) = True

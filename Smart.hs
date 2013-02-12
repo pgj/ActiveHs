@@ -1,11 +1,23 @@
 {-# LANGUAGE ViewPatterns, PatternGuards, OverloadedStrings #-}
-module Smart where
+module Smart
+    ( module Simple
+    , startGHCiServer
+    , restart
+    , TaskChan (..)
+    , interp
+    , compareClearGen
+    , compareMistGen
+    , wrap2
+    ) where
 
 import HoogleCustom
 import Specialize
 import Lang
 import Result
+import Logger
+import Simple hiding (TaskChan, startGHCiServer)
 import qualified Simple
+import Hash
 
 import ActiveHs.Base (WrapData2 (..), WrapData(..))
 import Graphics.Diagrams (Diagram)
@@ -18,23 +30,14 @@ import Data.Data.GenRep hiding (Error)
 import Data.Data.GenRep.Functions (mistify, numberErrors)
 import Data.Data.GenRep.Doc (toDoc)
 
-import Language.Haskell.Interpreter hiding (eval)
-import Data.Digest.Pure.MD5
 import Hoogle (Database, loadDatabase)
-import System.FastLogger
-
-import System.Locale (defaultTimeLocale)
-import Data.Time (getCurrentTime, formatTime)
-import Data.ByteString.UTF8 (fromString)
-import qualified Data.ByteString as B
-import qualified Data.ByteString.Lazy.UTF8 as Lazy
 
 import Control.Monad (join)
 import Data.Dynamic hiding (typeOf)
 import qualified Data.Data as D
 import Data.List (nub)
 import Data.Char (isAlpha)
-import Prelude hiding (catch)
+--import Prelude hiding (catch)
 
 
 ----------------------------------------------------------------------
@@ -46,22 +49,15 @@ data TaskChan
         , chan      :: Simple.TaskChan
         }
 
-startGHCiServer :: [FilePath] -> FilePath -> FilePath -> IO TaskChan
-startGHCiServer searchpaths logfilebase dbname = do
-    ti <- getCurrentTime
- -- log <- newLogger $ logfilebase ++ "_" ++ formatTime defaultTimeLocale "%Y-%m-%d-%H:%M:%S" ti ++ ".log"
- -- colons are not supported in filenames under windows
-    log <- newLogger $ logfilebase ++ "_" ++ formatTime defaultTimeLocale "%Y-%m-%d-%H-%M-%S" ti ++ ".log"
+startGHCiServer :: [FilePath] -> Logger -> FilePath -> IO TaskChan
+startGHCiServer searchpaths log dbname = do
     db <- if (dbname == "") then return Nothing else fmap Just $ loadDatabase dbname
-    ch <- Simple.startGHCiServer
-            searchpaths
-            (logMsgWithImportance 5 log . fromString) 
-            (logMsgWithImportance 4 log . fromString)
+    ch <- Simple.startGHCiServer searchpaths log
     return $ TC
-        { logger    = log
-        , database  = db
-        , chan      = ch
-        }
+            { logger    = log
+            , database  = db
+            , chan      = ch
+            }
 
 restart :: TaskChan -> IO ()
 restart ch = do
@@ -77,23 +73,6 @@ showErr lang (GhcException s)  = [ translate lang "GHC exception: " ++ s]
 
 ----------------------------------------------------------------------
 
-logMsgWithImportance :: Int -> Logger -> B.ByteString -> IO ()
-logMsgWithImportance n ch x = do
-    v <- timestampedLogEntry $ B.concat 
-        [nn, "    ", x, "    ", nn]
-    logMsg ch v 
- where
-    nn = fromString $ replicate n '#'
-
-
-
-----------------------------------------------------------------------
-
-mkId :: String -> MD5Digest
-mkId = md5 . Lazy.fromString
-
-------------------
-
 getCommand :: String -> (String, String)
 getCommand (':':'?': (dropSpace -> Just x)) 
     = ("?", x)
@@ -108,7 +87,7 @@ dropSpace "" = Just ""
 dropSpace _ = Nothing
 
 
-interp :: Bool -> MD5Digest -> Language -> TaskChan -> FilePath -> String 
+interp :: Bool -> Hash -> Language -> TaskChan -> FilePath -> String 
     -> (String -> Interpreter (IO [Result])) -> IO [Result]
 interp  verboseinterpreter (show -> idi) lang ch fn s@(getCommand -> (c, a)) xy 
     = case c of
@@ -120,7 +99,7 @@ interp  verboseinterpreter (show -> idi) lang ch fn s@(getCommand -> (c, a)) xy
     c | c `elem` ["t","k",""]
        -> join 
         $ fmap (either (return . map (Error True) . showErr lang) id)
-        $ Simple.interpret (chan ch) fn
+        $ sendToServer (chan ch) fn
         $ case c of
             "t" -> catchE True $ do
                 xx <- typeOf a

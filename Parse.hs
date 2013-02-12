@@ -15,29 +15,24 @@ module Parse
 
 import Text.Pandoc
 
-import AgdaHighlight
-
 import qualified Language.Haskell.Exts.Parser as HPar
 import qualified Language.Haskell.Exts.Syntax as HSyn
-
-{- Agda support (unfinished) -}
-import qualified Agda.Syntax.Parser as APar
-import qualified Agda.Syntax.Concrete as ASyn
 
 import Data.List.Split (splitOn)
 import Data.List (tails, partition, groupBy)
 import Data.Function (on)
 import Data.Char (isAlpha, isSpace, toUpper, isUpper)
 import Control.Monad (zipWithM)
+import qualified Data.Set as Set
 
 --------------------------------- data structures
 
-data ParseMode = HaskellMode | AgdaMode
+data ParseMode = HaskellMode -- | AgdaMode
                  deriving (Show, Enum, Eq)
 
 data Module
     = HaskellModule HSyn.Module
-    | AgdaModule ASyn.Module
+--    | AgdaModule ASyn.Module
     deriving (Show)
 
 data Doc
@@ -85,7 +80,6 @@ mainParse mode s = do
             fmap (Doc meta header) $ collectTests mode $ map ({-highlight . -}interpreter . Text) blocks
     where
         parseModule :: ParseMode -> String -> IO Module
-        parseModule AgdaMode    m = fmap AgdaModule (APar.parse APar.moduleParser m)
         parseModule HaskellMode m = case HPar.parseModuleWithMode HPar.defaultParseMode m of
             (HPar.ParseOk m) -> return $ HaskellModule m
             parseError       -> fail $ "parseHeader: " ++ show parseError
@@ -98,10 +92,10 @@ mainParse mode s = do
         preprocess l | take 3 (dropWhile (==' ') $ reverse l) == "-- " = []
                      | otherwise = [l]
         
-        pState = defaultParserState 
-            { stateSmart = True
-            , stateStandalone = True
-            , stateLiterateHaskell = True 
+        pState = def
+            { readerSmart = True
+            , readerStandalone = True
+            , readerExtensions = Set.insert Ext_literate_haskell $ readerExtensions def
             }
         
         interpreter :: BBlock -> BBlock
@@ -109,11 +103,6 @@ mainParse mode s = do
             = OneLineExercise (toUpper x) (isUpper x) e
         interpreter a = a
         
-        highlight :: BBlock -> BBlock
-        highlight (Text (CodeBlock ("",["sourceCode","literate","haskell"],[]) code)) | mode == AgdaMode
-            = (Text (RawBlock "html" $ highlightAgdaAsXHtml code))
-        highlight a = a
-
 ------------------------------
 
 collectTests :: ParseMode -> [BBlock] -> IO [BBlock]
@@ -135,38 +124,7 @@ collectTests mode l = zipWithM f l $ tail $ tails l where
     f x _ = return x
 
 processLines :: ParseMode -> Bool -> String -> IO ([String], [String], [Name])
-processLines AgdaMode    = processAgdaLines
 processLines HaskellMode = processHaskellLines
-
-{- Agda support (unfinished) -}
-processAgdaLines :: Bool -> String -> IO ([String], [String], [Name])
-processAgdaLines isExercise l_ = do
---    return ([], [], [])
-
-    let
-        l = parts l_
-
-    x <- fmap (zip l) $ mapM (APar.parse APar.moduleParser . ("module X where\n"++) . unlines) l
-    let
-        names = map toName $ concatMap (getFName . snd . snd) x
-
---        getFName [Agda.Module _ _ [Agda.TypedBindings _ (Agda.Arg _ _ [Agda.TBind _ a _])] declarations] 
---                  = map Agda.boundName a
-        getFName [ASyn.Module _ _ _ [ASyn.TypeSig _ n _]]
-                  = [n]
-        getFName _ = []
-
---        isVisible [Agda.Module _ _ [Agda.TypedBindings _ (Agda.Arg _ _ [Agda.TBind _ a _])] declarations] 
---                    = True
-        isVisible [ASyn.Module _ _ _ [ASyn.TypeSig _ n _]] = True
-        isVisible _ = not isExercise
-
-        (visible, hidden) = partition (isVisible . snd . snd) x
-
-        toName n = {- HSyn.Ident $-} show n
-
-    return (concatMap fst visible, concatMap fst hidden, names)
-
 
 processHaskellLines :: Bool -> String -> IO ([String], [String], [Name])
 processHaskellLines isExercise l_ = return (concatMap fst visible, concatMap fst hidden, names)

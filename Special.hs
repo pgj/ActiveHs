@@ -6,20 +6,17 @@ module Special
 
 import Smart
 import QuickCheck
-import CheckAgdaCode
 import Result
 import Lang
+import Logger
 import Html
 import Qualify (qualify)
+import Hash
 
 import ActiveHs.Base (WrapData2)
 
-import Language.Haskell.Interpreter hiding (eval)
-import Data.Digest.Pure.MD5 (MD5Digest)
-
 import qualified Data.Text as T
 import qualified Data.Text.IO as T
-import Data.ByteString.UTF8 (fromString)
 
 import Control.DeepSeq
 import Control.Concurrent.MVar
@@ -28,7 +25,7 @@ import System.FilePath ((</>),takeFileName)
 import System.Directory (getTemporaryDirectory)
 
 import Control.Concurrent (threadDelay, forkIO, killThread)
-import Prelude hiding (catch)
+--import Prelude hiding (catch)
 
 
 ---------------------------------------------------------------
@@ -58,14 +55,14 @@ exerciseServer'
     -> FilePath
     -> T.Text
     -> Language
-    -> MD5Digest
+    -> Hash
     -> SpecialTask
     -> IO [Result]
 
 exerciseServer' qualifier ch verbose fn sol lang m5 task = do
 
     let error = do
-            logMsgWithImportance 5 (logger ch) $ fromString $ "Server error:" ++ show m5
+            logStrMsg 0 (logger ch) $ "Server error:" ++ show m5
             return [Error True "Server error."]
 
         action =
@@ -100,8 +97,6 @@ exerciseServer' qualifier ch verbose fn sol lang m5 task = do
                 ss <- quickCheck qualifier m5 lang ch fn' (T.unpack sol) funnames is
                 let ht = head $ [x | ModifyCommandLine x <- ss] ++ [""]
                 return [ShowInterpreter lang 59 (getTwo "eval2" (takeFileName fn) j i j) j 'E' ht ss]
-            "agda" -> do
-                typeCheckAgdaCode sourcedirs m5 lang {-ch-} fn' (T.unpack sol)
 
 tmpSaveHs :: String -> String -> T.Text -> IO FilePath
 tmpSaveHs ext x s = do
@@ -110,7 +105,6 @@ tmpSaveHs ext x s = do
         tmp = tmpdir </> name ++ "." ++ ext
     T.writeFile tmp $ case ext of
         "hs" -> s
-        "agda" -> T.pack ("module " ++ name ++ " where\n\n") `T.append` s
     return tmp
 
 
