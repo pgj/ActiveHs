@@ -1,4 +1,4 @@
-{-# LANGUAGE ScopedTypeVariables, OverloadedStrings, ViewPatterns, PatternGuards, NamedFieldPuns #-}
+{-# LANGUAGE ScopedTypeVariables, OverloadedStrings, ViewPatterns, PatternGuards, NamedFieldPuns, CPP #-}
 
 module Special
     ( SpecialTask (..), exerciseServer'
@@ -25,8 +25,9 @@ import System.FilePath ((</>),takeFileName)
 import System.Directory (getTemporaryDirectory)
 
 import Control.Concurrent (threadDelay, forkIO, killThread)
---import Prelude hiding (catch)
-
+#if !MIN_VERSION_base(4,6,0)
+import Prelude hiding (catch)
+#endif
 
 ---------------------------------------------------------------
 

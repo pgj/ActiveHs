@@ -1,4 +1,4 @@
-{-# LANGUAGE ExistentialQuantification, ScopedTypeVariables, PatternGuards, FlexibleContexts #-}
+{-# LANGUAGE ExistentialQuantification, ScopedTypeVariables, PatternGuards, FlexibleContexts, CPP #-}
 
 module Simple
     ( Task (..), TaskChan
@@ -23,7 +23,9 @@ import Control.Exception (SomeException, catch)
 import Control.Monad (when, forever)
 import Control.Monad.Error (MonadError, catchError)
 import Data.List (isPrefixOf)
---import Prelude hiding (catch)
+#if !MIN_VERSION_base(4,6,0)
+import Prelude hiding (catch)
+#endif
 
 -------------------------
 

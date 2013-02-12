@@ -37,7 +37,6 @@ import Data.Dynamic hiding (typeOf)
 import qualified Data.Data as D
 import Data.List (nub)
 import Data.Char (isAlpha)
---import Prelude hiding (catch)
 
 
 ----------------------------------------------------------------------

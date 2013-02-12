@@ -31,7 +31,6 @@ import Control.Applicative ((<|>))
 import System.Locale (defaultTimeLocale)
 import Data.Time (getCurrentTime, formatTime, diffUTCTime)
 import Data.Maybe (listToMaybe)
---import Prelude hiding (catch)
 
 ---------------------------------------------------------------
 
