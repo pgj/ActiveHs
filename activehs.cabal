@@ -52,6 +52,7 @@ Executable activehs
     Html,
     Logger,
     QuickCheck,
+    Snap,
     Special
 
   Build-Depends:

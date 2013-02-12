@@ -17,7 +17,6 @@ import ActiveHs.Base (WrapData2)
 
 import qualified Data.Text as T
 import qualified Data.Text.IO as T
---import Data.ByteString.UTF8 (fromString)
 
 import Control.DeepSeq
 import Control.Concurrent.MVar

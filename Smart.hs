@@ -15,7 +15,7 @@ import Specialize
 import Lang
 import Result
 import Logger
-import Simple hiding (TaskChan, startGHCiServer, eval)
+import Simple hiding (TaskChan, startGHCiServer)
 import qualified Simple
 import Hash
 

@@ -13,6 +13,7 @@ import Logger
 import Result
 import Html
 import Hash
+import Snap
 
 import Snap.Core
 import Snap.Http.Server (httpServe)
@@ -21,14 +22,9 @@ import Snap.Util.FileServe (getSafePath, serveDirectoryWith, simpleDirectoryConf
 
 import qualified Data.Text as T
 import qualified Data.Text.IO as T
-import Data.Text.Encoding (decodeUtf8With)
-import Data.Text.Encoding.Error (lenientDecode)
-import Data.ByteString (ByteString)
-import Data.ByteString.UTF8 (fromString)
 
 import System.FilePath ((</>), takeExtension, dropExtension)
 import System.Directory (doesFileExist)
---import Language.Haskell.Interpreter (liftIO)
 import Control.Concurrent (threadDelay)
 import Control.Monad (when)
 import Control.Applicative ((<|>))
@@ -64,8 +60,8 @@ mainWithArgs args@(Args {verbose, port, static, logdir, hoogledb, fileservedir, 
         (   method GET
                 (   serveDirectoryWith simpleDirectoryConfig fileservedir
                 <|> serveHtml ch
-                <|> ifTop (redirect $ fromString mainpage)
-                <|> path (fromString restartpath) (liftIO $ restart ch >> clearCache cache)
+                <|> ifTop (redirectString mainpage)
+                <|> pathString restartpath (liftIO $ restart ch >> clearCache cache)
                 )
         <|> method POST (exerciseServer (sourcedir:includedir) (cache, ch) args)
         <|> notFound
@@ -83,14 +79,7 @@ mainWithArgs args@(Args {verbose, port, static, logdir, hoogledb, fileservedir, 
         getResponse >>= finishWith . setResponseCode 404
 
 
-
-
-
-
 ---------------------------------------------------------------
-
-getParam' :: ByteString -> Snap (Maybe T.Text)
-getParam' = fmap (fmap $ decodeUtf8With lenientDecode) . getParam
 
 type TaskChan' = (Cache (Int, T.Text), TaskChan)
 
@@ -112,7 +101,7 @@ exerciseServer sourcedirs (cache, ch) args@(Args {magicname, lang, exercisedir, 
       Right cacheAction -> do
         time <- liftIO $ getCurrentTime
         res <- fmap renderResults $ do
-            Just [ss, fn_, x, y, T.unpack -> lang']  <- fmap sequence $ mapM getParam' ["c","f","x","y","lang"]
+            Just [ss, fn_, x, y, T.unpack -> lang']  <- fmap sequence $ mapM getTextParam ["c","f","x","y","lang"]
 
             let fn = exercisedir </> T.unpack fn_
                 ext = reverse $ takeWhile (/='.') $ reverse fn
