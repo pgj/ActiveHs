@@ -85,9 +85,6 @@ mainWithArgs args@(Args {verbose, port, static, logdir, hoogledb, fileservedir, 
 
 ---------------------------------------------------------------
 
-logNormalMsg :: TaskChan -> String -> IO ()
-logNormalMsg ch x = logStrMsg 1 (logger ch) x
-
 getParam' :: ByteString -> Snap (Maybe T.Text)
 getParam' = fmap (fmap $ decodeUtf8With lenientDecode) . getParam
 
@@ -101,11 +98,11 @@ exerciseServer sourcedirs (cache, ch) args@(Args {magicname, lang, exercisedir, 
         getResponse >>= finishWith . setResponseCode 400
 
     let md5Id = md5 $ Lazy.fromString params   -- could be more efficient
-    liftIO $ logNormalMsg ch $ " eval " ++ show md5Id ++ " " ++ params
+    liftIO $ logStrMsg 2 (logger ch) $ " eval " ++ show md5Id ++ " " ++ params
     j <- liftIO $ lookupCache cache md5Id
     (>>= writeText) $ case j of
       Left (delay, res) -> liftIO $ do
-        logNormalMsg ch $ "   ch " ++ show md5Id
+        logStrMsg 2 (logger ch) $ "   ch " ++ show md5Id
         threadDelay delay
         return res
       Right cacheAction -> do
@@ -124,7 +121,7 @@ exerciseServer sourcedirs (cache, ch) args@(Args {magicname, lang, exercisedir, 
         liftIO $ do
             time' <- getCurrentTime
             let delay = round $ 1000000 * (realToFrac $ diffUTCTime time' time :: Double) :: Int
-            logNormalMsg ch $ "  end " ++ show md5Id ++ " " ++ show delay ++ " ms  " ++ T.unpack res
+            logStrMsg 2 (logger ch) $ "  end " ++ show md5Id ++ " " ++ show delay ++ " ms  " ++ T.unpack res
             cacheAction (delay, res)
             return res
 

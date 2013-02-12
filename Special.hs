@@ -8,6 +8,7 @@ import Smart
 import QuickCheck
 import Result
 import Lang
+import Logger
 import Html
 import Qualify (qualify)
 
@@ -18,7 +19,7 @@ import Data.Digest.Pure.MD5 (MD5Digest)
 
 import qualified Data.Text as T
 import qualified Data.Text.IO as T
-import Data.ByteString.UTF8 (fromString)
+--import Data.ByteString.UTF8 (fromString)
 
 import Control.DeepSeq
 import Control.Concurrent.MVar
@@ -64,7 +65,7 @@ exerciseServer'
 exerciseServer' qualifier ch verbose fn sol lang m5 task = do
 
     let error = do
-            logMsgWithImportance 5 (logger ch) $ fromString $ "Server error:" ++ show m5
+            logStrMsg 0 (logger ch) $ "Server error:" ++ show m5
             return [Error True "Server error."]
 
         action =

@@ -8,6 +8,8 @@ module Simple
     , catchError_fixed
     ) where
 
+import Logger
+
 import Language.Haskell.Interpreter hiding (interpret)
 
 import Control.Concurrent (forkIO)
@@ -29,17 +31,17 @@ newtype TaskChan
 
 ---------------
 
-startGHCiServer :: [String] -> (String -> IO ()) -> (String -> IO ()) -> IO TaskChan
-startGHCiServer paths{-searchpaths-} logError logMsg = do
+startGHCiServer :: [String] -> Logger -> IO TaskChan
+startGHCiServer paths{-searchpaths-} log = do
     ch <- newChan 
 
     _ <- forkIO $ forever $ do
-        logMsg "start interpreter"
+        logStrMsg 1 log "start interpreter"
         e <- runInterpreter (handleTask ch Nothing)
               `catch` \(e :: SomeException) ->
                 return $ Left $ UnknownError "GHCi server died."
         case e of
-            Left  e  -> logError $ "stop interpreter: " ++ show e
+            Left  e  -> logStrMsg 0 log $ "stop interpreter: " ++ show e
             Right () -> return ()
 
     return $ TC ch
@@ -50,7 +52,7 @@ startGHCiServer paths{-searchpaths-} logError logMsg = do
         task <- lift $ readChan ch
         case task of
             Just task -> handleTask_ ch oldFn task
-            Nothing   -> liftIO $ logError "interpreter stopped intentionally"
+            Nothing   -> liftIO $ logStrMsg 0 log "interpreter stopped intentionally"
 
     handleTask_ ch oldFn (Task fn repVar m) = do
         (cont, res) <- do  

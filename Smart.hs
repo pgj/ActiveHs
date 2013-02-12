@@ -25,8 +25,8 @@ import Hoogle (Database, loadDatabase)
 
 import System.Locale (defaultTimeLocale)
 import Data.Time (getCurrentTime, formatTime)
-import Data.ByteString.UTF8 (fromString)
-import qualified Data.ByteString as B
+--import Data.ByteString.UTF8 (fromString)
+--import qualified Data.ByteString as B
 import qualified Data.ByteString.Lazy.UTF8 as Lazy
 
 import Control.Monad (join)
@@ -49,19 +49,15 @@ data TaskChan
 startGHCiServer :: Int -> [FilePath] -> FilePath -> FilePath -> IO TaskChan
 startGHCiServer level searchpaths logfilebase dbname = do
     ti <- getCurrentTime
- -- log <- newLogger $ logfilebase ++ "_" ++ formatTime defaultTimeLocale "%Y-%m-%d-%H:%M:%S" ti ++ ".log"
- -- colons are not supported in filenames under windows
     log <- newLogger level $ logfilebase ++ "_" ++ formatTime defaultTimeLocale "%Y-%m-%d-%H-%M-%S" ti ++ ".log"
+             -- "%Y-%m-%d-%H:%M:%S" is not ok, colons are not supported in filenames under windows
     db <- if (dbname == "") then return Nothing else fmap Just $ loadDatabase dbname
-    ch <- Simple.startGHCiServer
-            searchpaths
-            (logMsgWithImportance 5 log . fromString) 
-            (logMsgWithImportance 4 log . fromString)
+    ch <- Simple.startGHCiServer searchpaths log
     return $ TC
-        { logger    = log
-        , database  = db
-        , chan      = ch
-        }
+            { logger    = log
+            , database  = db
+            , chan      = ch
+            }
 
 restart :: TaskChan -> IO ()
 restart ch = do
@@ -74,16 +70,6 @@ showErr lang (WontCompile l)   = nub{-miért?? -} . map errMsg $ l
 showErr lang (UnknownError s)  = [ translate lang "Unknown error: " ++ s]
 showErr lang (NotAllowed s)    = [ translate lang "Not allowed: " ++ s]
 showErr lang (GhcException s)  = [ translate lang "GHC exception: " ++ s]
-
-----------------------------------------------------------------------
-
-logMsgWithImportance :: Int -> Logger -> B.ByteString -> IO ()
-logMsgWithImportance n ch x =
-    logMsg 0 ch $ B.concat [nn, "    ", x, "    ", nn]
- where
-    nn = fromString $ replicate n '#'
-
-
 
 ----------------------------------------------------------------------
 
