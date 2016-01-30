@@ -46,7 +46,7 @@ startGHCiServer paths{-searchpaths-} log = do
         logStrMsg 1 log "start interpreter"
         e <- runInterpreter (handleTask ch Nothing)
               `CE.catch` \(e :: SomeException) ->
-                return $ Left $ UnknownError "GHCi server died."
+                return $ Left $ UnknownError $ "GHCi server died: " ++ show e
         case e of
             Left  e  -> logStrMsg 0 log $ "stop interpreter: " ++ show e
             Right () -> return ()
