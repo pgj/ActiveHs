@@ -28,7 +28,7 @@ import System.Directory (doesFileExist)
 import Control.Concurrent (threadDelay)
 import Control.Monad (when)
 import Control.Applicative ((<|>))
-import Data.Time (getCurrentTime, formatTime, diffUTCTime, defaultTimeLocale)
+import Data.Time (getCurrentTime, diffUTCTime)
 import Data.Maybe (listToMaybe)
 
 ---------------------------------------------------------------
@@ -39,10 +39,8 @@ main = getArgs >>= mainWithArgs
 mainWithArgs :: Args -> IO ()
 mainWithArgs args@(Args {verbose, port, static, logdir, hoogledb, fileservedir, gendir, mainpage, restartpath, sourcedir, includedir}) = do 
 
-    ti <- getCurrentTime
     log <- newLogger verbose $ 
-        logdir </> "interpreter_" ++ formatTime defaultTimeLocale "%Y-%m-%d-%H-%M-%S" ti ++ ".log"
-             -- "%Y-%m-%d-%H:%M:%S" is not ok, colons are not supported in filenames under windows
+        logdir </> "interpreter.log"
 
     ch <- startGHCiServer [sourcedir] log hoogledb
     cache <- newCache 10
