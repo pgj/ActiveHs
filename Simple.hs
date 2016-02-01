@@ -66,6 +66,7 @@ startGHCiServer paths{-searchpaths-} log = do
             when (oldFn /= Just fn) $ do
                 reset
                 set [searchPath := paths]
+                set [languageExtensions := [ExtendedDefaultRules]]
                 loadModules [fn]
                 setTopLevelModules ["Main"]
 
