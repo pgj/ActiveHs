@@ -25,7 +25,8 @@ import qualified Data.Text.IO as T
 
 import System.FilePath ((</>), takeExtension, dropExtension)
 import System.Directory (doesFileExist)
-import Control.Concurrent (threadDelay)
+import System.IO (hSetBuffering, stdin, BufferMode(NoBuffering))
+import Control.Concurrent (threadDelay, forkIO, killThread)
 import Control.Monad (when)
 import Control.Applicative ((<|>))
 import Data.Time (getCurrentTime, diffUTCTime)
@@ -45,23 +46,27 @@ mainWithArgs args@(Args {verbose, port, static, logdir, hoogledb, fileservedir, 
     ch <- startGHCiServer [sourcedir] log hoogledb
     cache <- newCache 10
 
-    httpServe
+    putStrLn "Press any key to stop the server."
+    t <- forkIO $ httpServe
 
-        ( setPort port
-        . setAccessLog (if null logdir then ConfigNoLog else ConfigFileLog (logdir </> "access.log"))
-        . setErrorLog  (if null logdir then ConfigNoLog else ConfigFileLog (logdir </> "error.log"))
-        $ emptyConfig
-        )
+          ( setPort port
+          . setAccessLog (if null logdir then ConfigNoLog else ConfigFileLog (logdir </> "access.log"))
+          . setErrorLog  (if null logdir then ConfigNoLog else ConfigFileLog (logdir </> "error.log"))
+          $ emptyConfig
+          )
 
-        (   method GET
-                (   serveDirectoryWith simpleDirectoryConfig fileservedir
-                <|> serveHtml ch
-                <|> ifTop (redirectString mainpage)
-                <|> pathString restartpath (liftIO $ restart ch >> clearCache cache)
-                )
-        <|> method POST (exerciseServer (sourcedir:includedir) (cache, ch) args)
-        <|> notFound
-        )
+          (   method GET
+                  (   serveDirectoryWith simpleDirectoryConfig fileservedir
+                  <|> serveHtml ch
+                  <|> ifTop (redirectString mainpage)
+                  <|> pathString restartpath (liftIO $ restart ch >> clearCache cache)
+                  )
+          <|> method POST (exerciseServer (sourcedir:includedir) (cache, ch) args)
+          <|> notFound
+          )
+    hSetBuffering stdin NoBuffering
+    _ <- getChar
+    killThread t
   where
     serveHtml ch = do
         p <- getSafePath
