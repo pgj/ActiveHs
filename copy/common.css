@@ -50,7 +50,12 @@ div.indent, pre, table {
   width: 95%;
 }
 
-div.indent, pre {
+pre {
+  margin-top: 0.5em;
+  margin-bottom: 0.5em;
+}
+
+form[class$="interpreter"] {
   margin-top: 0.5em;
   margin-bottom: 0.5em;
 }
@@ -60,10 +65,6 @@ pre.normal {
   width: auto;
 }
 
-
-div.indent input {
-  margin-bottom: 0.5em;
-}
 
 input, textarea {
   margin: 0;

@@ -59,6 +59,7 @@ extract mode verbose ghci (Args {lang, templatedir, sourcedir, exercisedir, gend
     writeEx (what <.> ext) [showEnv mode $ importsHiding []]
     ss' <- zipWithM processBlock [1..] $ preprocessForSlides ss
     ht <- readFile' $ templatedir </> lang' ++ ".template"
+    putStrLn $ "Lang is:" ++ lang'
 
     writeFile' (gendir </> what <.> "xml") $ flip writeHtmlString (Pandoc meta $ concat ss')
       $ def
@@ -96,7 +97,7 @@ extract mode verbose ghci (Args {lang, templatedir, sourcedir, exercisedir, gend
     importsHiding funnames = case modu of
         HaskellModule (HSyn.Module loc (HSyn.ModuleName modname) directives _ _ imps _) ->
             HPty.prettyPrint $ 
-              HSyn.Module loc (HSyn.ModuleName "Main") directives Nothing Nothing
+              HSyn.Module loc (HSyn.ModuleName "") directives Nothing Nothing
                 ([mkImport modname funnames, mkImport_ ('X':magicname) modname] ++ imps) []
 --        _ -> error "error in Converter.extract"
 
@@ -104,6 +105,10 @@ extract mode verbose ghci (Args {lang, templatedir, sourcedir, exercisedir, gend
         [ CodeBlock ("", ["haskell"], []) $ intercalate "\n" l | not $ null l ]
 
 ----------------------------
+
+-- todo: processBlock :: Int -> BBlock -> IO (Either Html [Block])
+--  hogy a hibákhoz lehessen rendes html oldalt generálni
+--  vagy a Resulthoz jobb show-t írni
 
     processBlock :: Int -> BBlock -> IO [Block]
 
@@ -126,27 +131,24 @@ extract mode verbose ghci (Args {lang, templatedir, sourcedir, exercisedir, gend
             $  mkCodeBlock static_
             ++ showBlockSimple lang' fn i rows (intercalate "\n" inForm)
 
-    processBlock ii (OneLineExercise 'H' erroneous exp) 
+    processBlock ii (OneLineExercise 'H' correct exp) 
         = return []
-    processBlock ii (OneLineExercise p erroneous exp) = do
+    processBlock ii (OneLineExercise p correct exp) = do
         let m5 = mkHash $ show ii ++ exp
             i = show m5
             fn = what ++ (if p == 'R' then "_" ++ i else "") <.> ext
             act = getOne "eval" fn i i
 
         when (p == 'R') $ writeEx fn [showEnv mode $ importsHiding [], "\n" ++ magicname ++ " = " ++ exp]
-        (b, exp') <- if p == 'F' && all (==' ') exp 
-                    then return (True, [])
+        when verbose $ putStrLn $ "interpreting  " ++ exp
+        result <- if p `elem` ['F', 'R']
+                    then return Nothing
                     else do
-                        when verbose $ putStrLn $ "interpreting  " ++ exp
-                        r <- interp False m5 lang' ghci (exercisedir </> fn) exp $ \a -> return $ return []
-
-                        return $ (not $ hasError r, take 1 r)
-
-        when (erroneous /= b) 
-            $ error $ translate lang' "Erroneous evaluation"  ++ ": " ++ exp ++ " ; " ++ showHtmlFragment (renderResults_ exp')
-
-        return [rawHtml $ showHtmlFragment $ showInterpreter lang' 60 act i p exp exp']
+                      result <- interp False m5 lang' ghci (exercisedir </> fn) exp Nothing
+                      when (correct == hasError [result])
+                        $ error $ translate lang' "Erroneous evaluation"  ++ ": " ++ exp ++ " ; " ++ showHtmlFragment (renderResult result)
+                      return $ Just result
+        return [rawHtml $ showHtmlFragment $ showInterpreter lang' 60 act i p exp result]
 
     processBlock _ (Text (CodeBlock ("",[t],[]) l)) 
         | t `elem` ["dot","neato","twopi","circo","fdp","dfdp","latex"] = do
@@ -181,7 +183,7 @@ extract mode verbose ghci (Args {lang, templatedir, sourcedir, exercisedir, gend
                 _       ->  [ t, "-Tpng", "-o", outfile, tmpfile, "2>&1 >/dev/null" ]
 
             if x == ExitSuccess 
-                then return [Para [Image [Str imgname] (imgname, "")]]
+                then return [Para [Image ("", [], []) [Str imgname] (imgname, "")]]
                 else fail $ "processDot " ++ tmpfile ++ "; " ++ show x
 
     processBlock _ (Text l)
@@ -244,7 +246,7 @@ mkImport m d
         , HSyn.importSrc = False
         , HSyn.importPkg = Nothing
         , HSyn.importAs = Nothing
-        , HSyn.importSpecs = Just (True, map (HSyn.IVar HSyn.NoNamespace . mkName) d)
+        , HSyn.importSpecs = Just (True, map (HSyn.IVar . mkName) d)
         , HSyn.importSafe = False
         }
 

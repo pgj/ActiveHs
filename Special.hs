@@ -17,6 +17,7 @@ import ActiveHs.Base (WrapData2)
 
 import qualified Data.Text as T
 import qualified Data.Text.IO as T
+import           Text.XHtml.Strict ((+++))
 
 import Control.DeepSeq
 import Control.Concurrent.MVar
@@ -25,6 +26,7 @@ import System.FilePath ((</>),takeFileName)
 import System.Directory (getTemporaryDirectory)
 
 import Control.Concurrent (threadDelay, forkIO, killThread)
+import Control.Monad.Trans (liftIO)
 #if !MIN_VERSION_base(4,6,0)
 import Prelude hiding (catch)
 #endif
@@ -58,46 +60,54 @@ exerciseServer'
     -> Language
     -> Hash
     -> SpecialTask
-    -> IO [Result]
+    -> IO Html
 
 exerciseServer' qualifier ch verbose fn sol lang m5 task = do
-
     let error = do
             logStrMsg 0 (logger ch) $ "Server error:" ++ show m5
-            return [Error True "Server error."]
+            return $ renderResult $ Error True "Server error."
 
-        action =
-                 do res <- eval task
-                    res `deepseq` return res
-           `catch` \(e :: SomeException) ->             -- ???
-                  return [Error True $ show e]
+        action = eval task `catch` \(e :: SomeException) ->             -- ???
+                  return $ renderResult $ Error True $ show e
 
     timeout (10*1000000) error action
 
   where
 
     eval Eval
-        = interp verbose m5 lang ch fn (T.unpack sol) $ \a -> return $ return []
+        = renderResult <$> interp verbose m5 lang ch fn (T.unpack sol) Nothing
 
     eval (Compare hiddenname goodsol)
-        = interp verbose m5 lang ch fn (T.unpack sol) $ \a ->
-            do  x <- interpret (wrap2 a hiddenname) (as :: WrapData2)
-                return $ compareMistGen lang (show m5) x $ goodsol
+        = do
+            res <- interp verbose m5 lang ch fn (T.unpack sol) $ Just $ \a -> do
+                     x <- interpret (wrap2 a hiddenname) (as :: WrapData2)
+                     liftIO $ compareMistGen lang (show m5) x $ goodsol
+            return $ renderResult res
 
     eval (Compare2 env funnames s) = do
         fn' <- tmpSaveHs "hs" (show m5) $ env `T.append` sol
         case qualify qualifier funnames s of
-            Left err -> return [Error True err]
-            Right s2 -> interp verbose m5 lang ch fn' s $ \a ->
-                fmap (compareClearGen lang (show m5)) $ interpret (wrap2 a s2) (as :: WrapData2)
+            Left err -> return $ renderResult (Error True err)
+            Right s2 -> do
+                res <- interp verbose m5 lang ch fn' s $ Just $ \a -> do
+                         result <- interpret (wrap2 a s2) (as :: WrapData2)
+                         liftIO $ compareClearGen lang (show m5) result
+                return $ renderResult res
 
     eval (Check ext sourcedirs env funnames is i j) = do
         fn' <- tmpSaveHs ext (show m5) $ env `T.append` sol
         case ext of
             "hs" -> do
                 ss <- quickCheck qualifier m5 lang ch fn' (T.unpack sol) funnames is
-                let ht = head $ [x | ModifyCommandLine x <- ss] ++ [""]
-                return [ShowInterpreter lang 59 (getTwo "eval2" (takeFileName fn) j i j) j 'E' ht ss]
+                case ss of
+                  ShowFailedTestCase testcase reason ->
+                    return . indent . renderResult $ ShowInterpreter lang 59 (getTwo "eval2" (takeFileName fn) j i j) j 'E' testcase (Just reason)
+                  Message _ _ ->
+                    return . indent $
+                      renderResult ss
+                      +++ (renderResult (ShowInterpreter lang 59 (getTwo "eval2" (takeFileName fn) j i j) j 'E' "" Nothing))
+                  _ ->
+                    return . indent $ renderResult ss
 
 tmpSaveHs :: String -> String -> T.Text -> IO FilePath
 tmpSaveHs ext x s = do

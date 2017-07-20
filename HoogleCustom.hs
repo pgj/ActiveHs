@@ -7,37 +7,25 @@ module HoogleCustom
 import Result
 import Lang
 
-import Hoogle hiding (Language, Result)
-import qualified Hoogle
-
-import Data.List (nub)
+import qualified Hoogle as H
 
 -------------------------
 
-query :: Bool -> Maybe Database -> String -> [Result]
-query b ch a 
-    = case parseQuery Haskell a of
-        Right q  -> format $ nub $ map (self . snd) $ search' ch q
-        Left err -> [Error b (errorMessage err)]
+query :: FilePath -> String -> IO Result
+query ch q = format <$> search' ch q
 
-queryInfo :: Language -> Bool -> Maybe Database -> String -> [Result]
-queryInfo lang b ch a 
-    = case parseQuery Haskell a of
-        Right q -> case search' ch q of
-            ((_,r):_) -> [SearchResults False [showTagHTML $ docs r]]
-            []        -> [Message (translate lang "No info for " ++ a) Nothing | b]
-        Left err -> [Error b $ errorMessage err]
+queryInfo :: Language -> FilePath -> String -> IO Result
+queryInfo lang db q = do
+    res <- search' db q
+    case res of
+      (r : _) -> return $ SearchResults False [H.targetDocs r]
+      []      -> return $ Message (translate lang "No info for " ++ q) Nothing
 
-search' :: Maybe Database -> Query -> [(Score, Hoogle.Result)]
-search' ch q 
-    = case ch of
-        Nothing -> []
-        Just db -> search db q
+search' :: FilePath -> String -> IO [H.Target]
+search' dbname q = H.withDatabase dbname
+                     (\db -> return $ H.searchDatabase db q)
 
-format :: [TagStr] -> [Result]
-format [] = []
-format r = [SearchResults (not $ null b) (map showTagHTML a)]
+format :: [H.Target] -> Result
+format r = SearchResults (not $ null b) (map H.targetDocs a)
   where
     (a, b) = splitAt 10 r
-
-

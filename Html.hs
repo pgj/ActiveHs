@@ -6,13 +6,16 @@ module Html
     , renderResults_
     , showInterpreter
     , indent, delim, getOne, getTwo
+    , renderHtml
+    , (|-|)
     ) where
 
 import Result
 import Lang
 import Data.Data.Compare
 
-import Text.XHtml.Strict
+import           Text.XHtml.Strict hiding (renderHtml)
+import qualified Text.XHtml.Strict as H
 import qualified Data.Text as T
 
 ---------------------
@@ -39,15 +42,20 @@ renderResult (SearchResults b l)
 renderResult (Error _ s) 
     = showRes "" "" "" [showLines s]
 renderResult (Message s r) 
-    = toHtml s |-| maybe noHtml renderResult r
+    = p (toHtml s) |-| maybe noHtml renderResult r
 renderResult (Comparison a x b es)
     = showRes a (showAnswer x) b (map mkBott es)
 renderResult (Dia htm err)
     = showResErr htm (map mkBott err)
-renderResult (ModifyCommandLine _)
+renderResult (ShowFailedTestCase _ _)
     = noHtml
 renderResult (ShowInterpreter lang limit act i prompt exp res)
     = showInterpreter lang limit act i prompt exp res
+
+renderHtml :: Html -> T.Text
+renderHtml = T.pack . H.renderHtmlFragment
+
+infixr 2 |-|
 
 (|-|) :: Html -> Html -> Html
 a |-| b | isNoHtml a || isNoHtml b = a +++ b
@@ -119,8 +127,8 @@ splitComment' a = f [] a  where
     skipString a [] = (a, [])
 
 
-showInterpreter :: Language -> Int -> String -> String{-Id-} -> Char -> String -> [Result] -> Html
-showInterpreter lang limit act i prompt exp res = indent $
+showInterpreter :: Language -> Int -> String -> String{-Id-} -> Char -> String -> Maybe Result -> Html
+showInterpreter lang limit act i prompt exp result = 
     form
     ! [ theclass $ if prompt == 'R' || null exp then "interpreter" else "resetinterpreter"
       , action act ]
@@ -135,12 +143,11 @@ showInterpreter lang limit act i prompt exp res = indent $
           , value $ if prompt == 'R' then "" else exp
           ]
       , br
-      ] ++
-      [ thediv
-        ! [ theclass "answer"
-          , identifier $ "res" ++ i
-          ] << if prompt `notElem` ['R', 'F'] then renderResults_ res else noHtml
-      ])
+      ] ++ [ thediv
+             ! [ theclass "answer"
+               , identifier $ "res" ++ i
+               ]
+             $ maybe noHtml renderResult result])
 
 onlyIf :: Bool -> [a] -> [a]
 onlyIf True l = l
@@ -156,6 +163,6 @@ getOne :: String -> String -> String -> String -> String
 getOne c f t x   = concat ["javascript:getOne('c=", c, "&f=", f, "','", t, "','", x, "');"]
 
 getTwo :: String -> String -> String -> String -> String -> String
-getTwo c f t x y = concat ["javascript:getTwo('c=", c, "&f=", f, "','", t, "','", x, "','", y, "');"]
+getTwo command f t x y = concat ["javascript:getTwo('c=", command, "&f=", f, "','", t, "','", x, "','", y, "');"]
 
 
