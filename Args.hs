@@ -21,7 +21,7 @@ data Args
         , fileservedir  :: String
         , logdir        :: String
 
-        , hoogledb      :: String
+        , hoogledb      :: (Maybe String)
 
         , mainpage      :: String
         , restartpath   :: String
@@ -46,7 +46,7 @@ myargs = Args
         , fileservedir  = ""      &= typDir         &= help "Files in this directory will be served as they are (for css and javascript files). Default points to the distribution's directory."
         , logdir        = "log"   &= typDir         &= help "Directory to put log files in. Default is 'log'."
 
-        , hoogledb      = ""      &= typFile        &= help "Hoogle database file"
+        , hoogledb      = Nothing      &= typFile        &= help "Hoogle database file"
 
         , mainpage      = "Index.xml" &= typ "PATH" &= help "Main web page path"
         , restartpath   = ""      &= typ "PATH"     &= help "Opening this path in browser restarts the ghci server."

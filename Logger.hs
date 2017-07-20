@@ -8,7 +8,6 @@ module Logger
 
 import qualified System.FastLogger as SF
 
-import Control.Applicative
 import Control.Monad
 
 import qualified Data.ByteString as B

@@ -9,7 +9,8 @@ module Simple
 
     , Interpreter, typeOf, kindOf
     , InterpreterError (..), errMsg, interpret
-    , as, liftIO, parens
+    , MonadInterpreter
+    , as, parens
     ) where
 
 import Logger
@@ -69,7 +70,6 @@ startGHCiServer paths{-searchpaths-} log = do
                 set [languageExtensions := [ExtendedDefaultRules]]
                 loadModules [fn]
                 setTopLevelModules ["Main"]
-
             x <- m
             return (True, Right x)
 
@@ -90,9 +90,6 @@ sendToServer (TC ch) fn m = do
     rep <- newEmptyMVar
     writeChan ch $ Just $ Task fn rep m
     takeMVar rep
-
-
-
 
 fatal :: InterpreterError -> Bool
 fatal (WontCompile _) = False

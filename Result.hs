@@ -25,8 +25,8 @@ data Result
     | Error Bool String         -- True: important error message
     | Dia Html [Err]
     | Message String (Maybe Result)
-    | ModifyCommandLine String
-    | ShowInterpreter Language Int String String{-Id-} Char String [Result]
+    | ShowFailedTestCase String Result
+    | ShowInterpreter Language Int String String{-Id-} Char String (Maybe Result)
         deriving (Show)
 
 instance NFData Result where
@@ -37,7 +37,7 @@ instance NFData Result where
     rnf (Error b s) = rnf (b, s)
     rnf (Message s r) = rnf (s, r)
     rnf (Dia h e) = length (showHtmlFragment h) `seq` rnf e
-    rnf (ModifyCommandLine s) = rnf s
+    rnf (ShowFailedTestCase testcase res) = rnf (testcase, res)
     rnf (ShowInterpreter a b c d e f g) = rnf (a,b,c,d,e,f,g)
 
 errors :: Result -> Bool
@@ -47,7 +47,7 @@ errors (Comparison _ x _ l) = x /= Yes || not (null l)
 errors (Dia _ l) = not $ null l
 errors (Error i _) = i
 errors (Message _ x) = maybe False errors x
-errors (ShowInterpreter _ _ _ _ _ _ g) = any errors g
+errors (ShowInterpreter _ _ _ _ _ _ g) = maybe False errors g
 errors _ = False
 
 filterResults :: [Result] -> [Result]

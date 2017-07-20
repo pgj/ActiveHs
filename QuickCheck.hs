@@ -14,8 +14,9 @@ import qualified Test.QuickCheck.Property as QC
 
 import Data.Char (isLower)
 import Data.List (intercalate)
-import Control.Monad (join,forM)
-import Control.Concurrent.MVar
+import Control.Monad (join,forM,void)
+import Control.Monad.Trans (liftIO)
+import Control.Concurrent.MVar (newMVar, swapMVar, takeMVar)
 
 ---------------------------------------
 
@@ -28,7 +29,7 @@ quickCheck
     -> String
     -> [String]
     -> [([String],String)]      -- test cases
-    -> IO [Result]
+    -> IO Result
 quickCheck qualifier m5 lang ch fn ft funnames testcases = do
     logStrMsg 3 (logger ch) $ "test cases: " ++ show testcases
     logStrMsg 3 (logger ch) $ "names to be qualified: " ++ show funnames
@@ -36,10 +37,10 @@ quickCheck qualifier m5 lang ch fn ft funnames testcases = do
     case allRight $ map (qualify qualifier funnames . snd) testcases of
         Left err -> do
             logStrMsg 3 (logger ch) $ "Error in qualification: " ++ err
-            return [Error True err]
+            return $ Error True err
         Right s_ -> do
             logStrMsg 3 (logger ch) $ "Qualified expressions: " ++ show s_
-            interp False m5 lang ch fn "" $ \a ->
+            interp False m5 lang ch fn "" $ Just $ \a ->
                 do  ss <- forM (testcases `zip` s_) $ \((v,s1),s2) -> do
                       ts1 <- typeOf s1
                       ts2 <- typeOf s2
@@ -50,7 +51,7 @@ quickCheck qualifier m5 lang ch fn ft funnames testcases = do
                     liftIO $ logStrMsg 3 (logger ch) "Before interpretation"
                     m <- interpret ts (as :: [TestCase])
                     liftIO $ logStrMsg 3 (logger ch) "After interpretation"
-                    return $ qcs lang (logger ch) m
+                    liftIO $ qcs lang (logger ch) m
 
   where
     fixType (s,t) =
@@ -73,20 +74,25 @@ quickCheck qualifier m5 lang ch fn ft funnames testcases = do
         g x | x `elem` vs = {- "\"(\" ++ -} " show " ++ x -- ++ " ++ \")\""
         g x = show x
 
-qcs :: Language -> Logger -> [TestCase] -> IO [Result]
-qcs lang log = join . foldM (return [Message (translate lang "All test cases are completed.") Nothing]) (qc lang log)
+qcs :: Language -> Logger -> [TestCase] -> IO Result
+qcs lang log = foldM (Message (translate lang "All test cases are completed.") Nothing) (qc lang log)
 
 -- test = qc $ TestCase $ \f (QCNat x) (QCInt y) -> f (show x ++ " + " ++ show y, min 10 (x + y), x + y)
 -- test' = qc $ TestCase $ \f (QCInt x) -> f ("sqr " ++ show x, min 10 (x*x), x*x)
 
-qc :: Language -> Logger -> TestCase -> IO (Maybe (IO [Result]))
+qc :: Language -> Logger -> TestCase -> IO (Maybe Result)
 qc lang log (TestCase p) = do
     v <- newMVar Nothing
     let ff (s, x, y)
-            = QC.whenFail (modifyMVar_ v $ const $ return $ Just $ fmap (ModifyCommandLine s :) res)
-            $ QC.morallyDubiousIOProperty
-            $ fmap (\s -> if hasError s then QC.failed else QC.succeeded) res
+            = QC.morallyDubiousIOProperty $ do
+                r <- res
+                if hasError [r]
+                  then do 
+                    void $ swapMVar v $ Just $ ShowFailedTestCase s r
+                    return QC.failed
+                  else return QC.succeeded
           where
+            res :: IO Result
             res = do
                 logStrMsg 4 log $ "compare: " ++ s
                 compareClearGen lang "noId" $ WrapData2 x y

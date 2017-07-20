@@ -3,7 +3,7 @@
 
 module Main where
 
-import Smart
+import Smart hiding (hoogledb)
 import Cache
 import Converter
 import Args
@@ -28,6 +28,7 @@ import System.Directory (doesFileExist)
 import System.IO (hSetBuffering, stdin, BufferMode(NoBuffering))
 import Control.Concurrent (threadDelay, forkIO, killThread)
 import Control.Monad (when)
+import Control.Monad.Trans (liftIO)
 import Control.Applicative ((<|>))
 import Data.Time (getCurrentTime, diffUTCTime)
 import Data.Maybe (listToMaybe)
@@ -45,6 +46,8 @@ mainWithArgs args@(Args {verbose, port, static, logdir, hoogledb, fileservedir, 
 
     ch <- startGHCiServer [sourcedir] log hoogledb
     cache <- newCache 10
+
+    logStrMsg 2 log ("lang: " ++ lang args)
 
     putStrLn "Press any key to stop the server."
     t <- forkIO $ httpServe
@@ -101,16 +104,21 @@ exerciseServer sourcedirs (cache, ch) args@(Args {magicname, lang, exercisedir, 
         return res
       Right cacheAction -> do
         time <- liftIO $ getCurrentTime
-        res <- fmap renderResults $ do
+        res <- fmap renderHtml $ do
             Just [ss, fn_, x, y, T.unpack -> lang']  <- fmap sequence $ mapM getTextParam ["c","f","x","y","lang"]
 
             let fn = exercisedir </> T.unpack fn_
-                ext = reverse $ takeWhile (/='.') $ reverse fn
-            True <- liftIO $ doesFileExist fn
-            Just task <- liftIO $ fmap (eval_ ext ss y . T.splitOn (T.pack delim)) $ T.readFile fn
-            liftIO $ exerciseServer' ('X':magicname) ch verboseinterpreter fn x lang md5Id task
-
-         <|> return [Error True $ translate lang "Inconsistency between server and client."]
+                ext = case takeExtension fn of
+                        ('.':ext) -> ext
+                        _         -> ""
+            fnExists <- liftIO $ doesFileExist fn
+            if fnExists
+              then do
+                Just task <- liftIO $ fmap (eval_ ext ss y . T.splitOn (T.pack delim)) $ T.readFile fn
+                liftIO $ exerciseServer' ('X':magicname) ch verboseinterpreter fn x lang' md5Id task
+              else
+                return (inconsistencyError lang')
+         <|> return (inconsistencyError lang)
 
         liftIO $ do
             time' <- getCurrentTime
@@ -120,6 +128,10 @@ exerciseServer sourcedirs (cache, ch) args@(Args {magicname, lang, exercisedir, 
             return res
 
   where
+    inconsistencyError :: String -> Html
+    inconsistencyError lang' = renderResult $ Error True $ translate lang' "Inconsistency between server and client."
+
+    eval_ :: String -> T.Text -> T.Text -> [T.Text] -> Maybe SpecialTask
     eval_ _ "eval"  _ [_]
         = Just Eval
     eval_ _ "eval"  _ [_, goodsol]
