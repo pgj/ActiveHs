@@ -1,5 +1,5 @@
 name:                activehs
-version:             0.3.1.1
+version:             0.3.2
 category:            Education, Documentation
 synopsis:            Haskell code presentation tool
 description:
@@ -19,9 +19,10 @@ stability:           alpha
 license:             BSD3
 license-file:        LICENSE
 author:              Péter Diviánszky
-maintainer:          divip@aszt.inf.elte.hu
+maintainer:          Artúr Poór <gombocarti@gmail.com>
 cabal-version:       >=1.6
 build-type:          Simple
+
 data-files:
     copy/*.css, 
     copy/*.js, 
@@ -31,8 +32,17 @@ data-files:
     doc/DevDoc_en.lhs,
     doc/watchserver.sh
 
+source-repository head
+  type: git
+  location: https://github.com/poor-a/ActiveHs
+
+source-repository this
+  type: git
+  location: https://github.com/poor-a/ActiveHs/tree/0.3.2
+  tag: 0.3.2
+
 Executable activehs
-  GHC-Options: -threaded -rtsopts -with-rtsopts=-N2 -O2 -Wall -fwarn-tabs -fwarn-monomorphism-restriction -fwarn-missing-import-lists
+  GHC-Options: -threaded -rtsopts -with-rtsopts=-N2 -Wall -fwarn-tabs -fwarn-monomorphism-restriction -fwarn-missing-import-lists
   Main-is: 
     Main.hs
   Other-modules:
